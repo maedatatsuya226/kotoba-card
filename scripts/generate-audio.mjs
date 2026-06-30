@@ -26,14 +26,27 @@ async function exists(p) {
   try { await stat(p); return true; } catch { return false; }
 }
 
-async function synthesize(text) {
+// reading のモーラ数(拗音は2文字1モーラ)
+function moraCount(s) {
+  const small = /[ゃゅょぁぃぅぇぉっャュョァィゥェォッ]/;
+  let n = 0, i = 0;
+  while (i < s.length) {
+    if (i + 1 < s.length && small.test(s[i + 1])) i += 2;
+    else i += 1;
+    n += 1;
+  }
+  return n;
+}
+
+async function synthesize(text, { speedScale, postPhonemeLength }) {
   const q = await fetch(
     `${ENGINE}/audio_query?text=${encodeURIComponent(text)}&speaker=${SPEAKER_ID}`,
     { method: 'POST' }
   );
   if (!q.ok) throw new Error(`audio_query ${q.status}: ${await q.text()}`);
   const query = await q.json();
-  query.speedScale = 0.95; // 単語呼称用に少しゆっくり
+  query.speedScale = speedScale;
+  query.postPhonemeLength = postPhonemeLength;
 
   const s = await fetch(`${ENGINE}/synthesis?speaker=${SPEAKER_ID}`, {
     method: 'POST',
@@ -56,9 +69,15 @@ async function main() {
 
     await mkdir(dir, { recursive: true });
     const ttsText = TTS_OVERRIDES[card.id] ?? card.reading;
+    // 1モーラ語は再生時間が短くて高齢患者に聞き取りにくいので、
+    // 速度を遅めにし、後ろに無音を追加してリリースを聞き取りやすくする
+    const mora = moraCount(card.reading);
+    const params = mora <= 1
+      ? { speedScale: 0.80, postPhonemeLength: 0.4 }
+      : { speedScale: 0.95, postPhonemeLength: 0.1 };
     const tag = ttsText === card.reading ? card.reading : `${card.reading} → ${ttsText}`;
-    process.stdout.write(`[${generated + 1}] ${card.id} (${tag}) ... `);
-    const wav = await synthesize(ttsText);
+    process.stdout.write(`[${generated + 1}] ${card.id} (${tag}, ${mora}mora) ... `);
+    const wav = await synthesize(ttsText, params);
     await writeFile(outPath, wav);
     console.log(`${(wav.length / 1024).toFixed(1)} KB`);
     generated++;
