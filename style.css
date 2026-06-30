@@ -439,6 +439,11 @@ body {
   min-width: 60%;
   border: 2px solid var(--color-primary-soft);
 }
+.answer-label.is-hint {
+  color: var(--color-secondary);
+  border-color: #fde68a;
+  background: #fffbeb;
+}
 
 .quiz-footer {
   display: flex;

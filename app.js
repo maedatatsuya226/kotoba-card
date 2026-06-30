@@ -11,6 +11,7 @@
     queue: [],
     index: 0,
     answerShown: false,
+    hintShown: false,
   };
 
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -170,11 +171,34 @@
 
     $('#answer-area').hidden = true;
     $('#answer-label').textContent = '';
+    $('#answer-label').classList.remove('is-hint');
+    $('#btn-hint').hidden = false;
     $('#btn-show-answer').hidden = false;
     $('#btn-next').hidden = true;
     state.answerShown = false;
+    state.hintShown = false;
 
     preloadUpcomingImages();
+  }
+
+  // 拗音(ゃゅょ)・促音(っ)が続く場合は2文字を1ユニットとして扱う
+  function makeHint(label) {
+    if (!label || label.length === 0) return '';
+    if (label.length === 1) return label;
+    const small = /[ゃゅょぁぃぅぇぉっャュョァィゥェォッ]/;
+    const head = small.test(label[1]) ? label.slice(0, 2) : label[0];
+    return head + '〇'.repeat(label.length - head.length);
+  }
+
+  function showHint() {
+    if (state.answerShown || state.hintShown) return;
+    const card = state.queue[state.index];
+    $('#answer-label').textContent = makeHint(card.japanese_label);
+    $('#answer-label').classList.add('is-hint');
+    $('#answer-area').hidden = false;
+    $('#btn-replay').hidden = true;
+    $('#btn-hint').hidden = true;
+    state.hintShown = true;
   }
 
   // 次の2問の画像をバックグラウンドで先読み (体感速度向上)
@@ -195,7 +219,10 @@
     if (state.answerShown) return;
     const card = state.queue[state.index];
     $('#answer-label').textContent = card.japanese_label;
+    $('#answer-label').classList.remove('is-hint');
     $('#answer-area').hidden = false;
+    $('#btn-replay').hidden = false;
+    $('#btn-hint').hidden = true;
     $('#btn-show-answer').hidden = true;
     $('#btn-next').hidden = false;
 
@@ -297,6 +324,7 @@
       startQuiz();
     });
 
+    $('#btn-hint').addEventListener('click', showHint);
     $('#btn-show-answer').addEventListener('click', showAnswer);
     $('#btn-replay').addEventListener('click', () => {
       const card = state.queue[state.index];
