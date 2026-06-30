@@ -18,8 +18,9 @@ const FORCE = process.argv.includes('--force');
 // 規約上 reading は「ヒント機能等で使うかな表記」のままにし、TTS にだけ別テキストを渡す。
 // 追加時は本ファイルにエントリを足し、該当 wav を削除して再実行すれば差分生成される。
 const TTS_OVERRIDES = {
-  body_teeth: '歯',    // 「は」だけだと助詞「ワ」と読まれる
-  job_nurse:  '看護師', // 「かんごし」だと「カンゴ」+「シ」に分割される
+  body_teeth:      '歯',        // 「は」だけだと助詞「ワ」と読まれる
+  job_nurse:       '看護師',     // 「かんごし」だと「カンゴ」+「シ」に分割される
+  music_harmonica: 'ハーモニカ',  // 「はーもにか」だと「ワーモニカ」と読まれる(カタカナで回避)
 };
 
 async function exists(p) {
