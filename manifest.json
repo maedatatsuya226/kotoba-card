@@ -1,0 +1,20 @@
+{
+  "name": "ST絵カード呼称トレーニング",
+  "short_name": "ST絵カード",
+  "description": "言語聴覚士のための絵カード呼称トレーニングアプリ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f8fb",
+  "theme_color": "#2563eb",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "images/app/kotoba-card-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
