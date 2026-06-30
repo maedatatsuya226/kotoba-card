@@ -11,53 +11,28 @@
 - ブランチ: `main`（直接コミット運用）
 - PWA化済み、iPad のホーム画面追加でオフライン動作可能
 
-## 進行中：音声voice選定の精緻化
+## 直近完了：音声を VOICEVOX 事前生成 wav に切替
 
-### 背景
-ユーザーは iPad で **Otoya（拡張）** をダウンロード済み。さらに **Siri と同等品質の音声**（iOS の O-ren / Hattori 等）を使いたい意向。
+iPad voice 精緻化を検討する中で、AivisSpeech 試作 → Anneli の権利問題発覚 → VOICEVOX に着地。`No.7 アナウンス`(styleId=30) で142語の wav を事前生成して `audio/[category]/[id].wav` に同梱、Web Speech はフォールバックとして残存。詳細は `docs/DECISIONS.md` §2。
 
-現在の `app.js` の `pickBestVoice()` は「最初に見つかった Enhanced 系」を選ぶだけなので、複数 Enhanced 入りの環境では意図しない voice が選ばれる可能性がある。
+このセッションで追加されたもの：
+- `audio/` 配下 142件の wav（4.9MB、git管理）
+- `scripts/generate-audio.mjs` 本生成スクリプト（差分のみ / `--force` で全件再生成）
+- `scripts/audition.mjs` 試聴用（git管理、`audition_out/` は gitignore）
+- `app.js` の `speak()` を wav 再生 + Web Speech フォールバック化
+- `sw.js` の `CACHE_NAME=v2`、audio をプリキャッシュに追加
 
-### 次にやること
+### 残作業
 
-#### 1. iPad 実機で利用可能な voice 一覧を確認
-iPad の Safari で開発者ツール、もしくは下記をブックマークレットなどで実行：
+- [ ] **コミット & push**（手動でレビューしてから）
+- [ ] **iPad 実機（院内）で確認**: PWA キャッシュが更新されるか、オフライン再生できるか
+- [ ] ST に試聴してもらい、`No.7 アナウンス` で違和感のある単語があれば洗い出し
+  - 該当語があれば VOICEVOX GUI でアクセント手動補正 → 該当 wav を差替え（部分再生成 or `--force`）
 
-```js
-speechSynthesis.getVoices().filter(v => v.lang.startsWith('ja')).map(v => v.name)
-```
+### 将来の小タスク（必要になれば）
 
-期待される候補：`Kyoko`, `Kyoko (Enhanced)`, `Otoya`, `Otoya (Enhanced)`, `O-ren`, `Hattori`, `Hattori (Enhanced)` 等
-
-#### 2. `pickBestVoice()` の優先順位を更新
-
-新しい優先順位（案）：
-
-```
-1. O-ren                         （Siri相当 Neural、最高品質）
-2. Hattori (Enhanced)            （Siri同系統男性、最高品質）
-3. Otoya (Enhanced)              （旧世代Enhanced男性、ユーザーがDL済）
-4. Kyoko (Enhanced)
-5. 任意の Enhanced/Premium
-6. 任意の Online/Natural/Neural
-7. Kyoko / Otoya / Hattori 標準
-8. localService の任意 ja voice
-```
-
-実装箇所: `app.js` の `pickBestVoice(voices)` 関数
-
-#### 3. （オプション）設定画面に音声セレクタを追加
-- 「音声: ◯自動 / ◯O-ren / ◯Otoya / ◯Kyoko / ...」のラジオボタン
-- 利用可能な ja voice を動的に列挙
-- localStorage で記憶
-- 工数 20-30分
-
-### 検討途中のメモ
-
-- Siri本体の音声は Web Speech API から触れない（OS制限）
-- O-ren は Apple Neural TTS で Siri 相当の品質
-- 患者ごとに男女voice切替したいニーズはあるかも → UI セレクタが将来便利
-- 音声を変えるたびに sw.js の CACHE_NAME は **上げる必要なし**（voice は端末側）
+- 設定画面に話者セレクタ追加（事前生成済みの複数話者を切替可能にする）。今は単一話者運用。
+- `pickBestVoice()` は wav が落ちた時のフォールバック専用なので、必要なら O-ren/Hattori 優先に微調整可能
 
 ## それ以外の保留事項
 

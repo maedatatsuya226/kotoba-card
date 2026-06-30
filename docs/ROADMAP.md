@@ -4,28 +4,19 @@
 
 ---
 
-## 🎵 音声品質の向上（VOICEVOX または OpenAI TTS）
+## 🎵 音声品質の向上（✅ 着手済：VOICEVOX No.7 アナウンス）
 
-**現状**: Web Speech API (iPad の Kyoko Enhanced)。実用上はOK。
+**現状**: VOICEVOX `No.7 アナウンス` で142語を事前生成、`audio/[category]/[id].wav` として同梱（4.9MB）。Web Speech はフォールバック。詳細は `DECISIONS.md` §2。
 
-**選択肢**:
+**検討中だった代替案（不採用）**:
+- AivisSpeech (Anneli) → 声優の無断学習問題で医療用途には不適
+- OpenAI TTS → コスト発生 + 商用APIへの依存
+- Google Cloud TTS Neural2 → アカウント設定の運用負担
 
-| 方法 | 工数 | コスト | 音質 | 備考 |
-|------|------|-------|------|------|
-| VOICEVOX で事前生成 mp3 | 1時間 | 完全無料 | ⭐⭐⭐⭐ | アプリ起動が必要、推奨話者「九州そら」「青山龍星」 |
-| OpenAI TTS で事前生成 | 30分 | 約2円 | ⭐⭐⭐⭐⭐ | APIキー必要、`tts-1` / nova-shimmer 等 |
-| Google Cloud TTS Neural2 | 1時間 | 無料枠内 | ⭐⭐⭐⭐ | アカウント設定が面倒 |
-
-**実装イメージ**:
-```
-1. scripts/generate-audio.js を書く（cards.json を読み TTSに渡す）
-2. audio/[category]/[id].mp3 を生成
-3. app.js の speak() を mp3 再生に変更（フォールバックで Web Speech 維持）
-4. sw.js の SHELL_ASSETS / 動的キャッシュに audio/ を追加
-5. CACHE_NAME を v2 に上げる
-```
-
-**やるタイミング**: STさんから「機械音声が患者の理解を妨げる」フィードバックが出たら。
+**今後の改善余地（必要になったら）**:
+- 話者を増やして設定画面から切替（男女、若年/老年など）
+- アクセントが不自然な単語を VOICEVOX GUI で手動補正して個別差替え
+- ファイルサイズ削減（wav → opus/m4a）。ffmpeg依存が増えるので慎重に判断
 
 ---
 

@@ -8,3 +8,6 @@ Thumbs.db
 node_modules/
 .wrangler/
 .dev.vars
+
+# 試聴用の生成物 (本番では使わない)
+scripts/audition_out/

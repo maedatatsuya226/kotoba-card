@@ -19,23 +19,36 @@
 
 ---
 
-## 2. 音声は Web Speech API（事前生成 mp3 を保留）
+## 2. 音声は VOICEVOX 事前生成 wav（Web Speech はフォールバック）
 
-**判断**: 当面 `speechSynthesis` を使用。voice 選定ロジックで iPad の Kyoko (Enhanced) / Otoya (Enhanced) を優先選択。
+**判断**: VOICEVOX エンジン (`No.7 アナウンス` / styleId=30) で142語を事前生成し、`audio/[category]/[id].wav` として同梱。再生は HTML `<audio>` で行い、取得失敗時は Web Speech API にフォールバック。
 
-**検討した代替案**:
-- Google Cloud TTS で事前生成（無料枠内、最高音質）
-- Azure Speech Neural
-- VOICEVOX（ローカルOSS、九州そら等）
-- OpenAI TTS
+**経緯**:
+1. 当初は Web Speech API のみで運用（iPad Kyoko Enhanced 想定）
+2. iPad voice の精緻化検討中、もう一段上を狙って AivisSpeech を試作
+3. AivisSpeech のデフォルト声 (まお/コハク) は**アニメ調**で医療現場には不適合
+4. AivisHub 上位モデルの「Anneli」に**声優・山村響さんの無断学習問題**が判明、医療施設の公式アプリでは使用不可と判断
+5. ライセンスが公式で一元管理される **VOICEVOX に切替**、ナレーション特化の `No.7 アナウンス` を選定
 
 **理由**:
-- iPad の Kyoko Enhanced は実用上「ロボット感が薄い」レベル
-- 事前生成は工数・運用負担が増える（カード追加時に再生成必要）
-- まず Web Speech で運用 → STさんの感想を聞いてから判断する方針
-- `pickBestVoice()` で Enhanced > Online/Natural > 既知の自然voice > localService の優先順位で選択
+- 医療施設アプリとして**学習元のクリアランスがプラットフォームレベルで保証**されている必要がある
+- VOICEVOX 各キャラの利用規約は公式サイトで明示、商用利用可
+- `No.7 アナウンス` は名前通りアナウンス向けに調整された、感情の薄い明瞭な大人女性声
+- 事前生成 wav なら端末差・iOS Safari の TTS タイミング問題も発生しない
+- フォールバックで Web Speech を残しておけば、新規追加カードで wav 未生成のケースも黙って自動対応
 
-**いつ覆すか**: ST が「機械音声で訓練に支障」とフィードバックしたら VOICEVOX で142語を事前生成して `audio/[category]/[id].mp3` を同梱する（ROADMAP.md 参照）。
+**サイズ感**:
+- wav 142ファイル合計 4.9MB（平均 35KB）
+- 既存の画像 7.8MB と合わせて約13MB、iOS の SW キャッシュ上限 ~50MB に対し余裕
+
+**運用**:
+- 生成は `node scripts/generate-audio.mjs`（差分のみ） / `--force`（全件再生成）
+- VOICEVOX アプリ起動中（`http://127.0.0.1:50021`）が前提
+- アプリ追加後は `sw.js` の `CACHE_NAME` を上げる
+
+**いつ覆すか**:
+- ST から「No.7 ではアクセントが不自然」フィードバックが特定の語で出たら、VOICEVOX GUI でアクセント手動補正して該当語のみ再生成
+- 話者を変えたくなったら `scripts/generate-audio.mjs` の `SPEAKER_ID` を変えて `--force` 再生成
 
 ---
 

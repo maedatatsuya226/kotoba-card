@@ -1,7 +1,7 @@
 // Service Worker for kotoba-card (ST絵カード呼称トレーニング)
 // 全アセットを初回訪問時にキャッシュし、以降オフラインで動作させる
 
-const CACHE_NAME = 'kotoba-card-v1';
+const CACHE_NAME = 'kotoba-card-v2';
 
 const SHELL_ASSETS = [
   './',
@@ -19,19 +19,21 @@ self.addEventListener('install', (event) => {
     const cache = await caches.open(CACHE_NAME);
     await cache.addAll(SHELL_ASSETS);
 
-    // cards.json から画像URLを生成して追加キャッシュ
+    // cards.json から画像 + 音声URLを生成して追加キャッシュ
     try {
       const res = await fetch('./data/cards.json', { cache: 'no-store' });
       const cards = await res.json();
-      const imageUrls = cards.map(
-        (c) => `./images/${c.category}/${c.id}.png`
-      );
+      const urls = [];
+      for (const c of cards) {
+        urls.push(`./images/${c.category}/${c.id}.png`);
+        urls.push(`./audio/${c.category}/${c.id}.wav`);
+      }
       // チャンク化して安全に追加
-      for (let i = 0; i < imageUrls.length; i += 20) {
-        await cache.addAll(imageUrls.slice(i, i + 20));
+      for (let i = 0; i < urls.length; i += 20) {
+        await cache.addAll(urls.slice(i, i + 20));
       }
     } catch (e) {
-      // 画像キャッシュ失敗してもインストール自体は成功させる
+      // 個別キャッシュ失敗してもインストール自体は成功させる
       // (fetchイベントで個別にキャッシュされる)
     }
   })());

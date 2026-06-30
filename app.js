@@ -238,17 +238,23 @@
     state.hintShown = true;
   }
 
-  // 次の2問の画像をバックグラウンドで先読み (体感速度向上)
+  // 次の2問の画像と音声をバックグラウンドで先読み (体感速度向上)
   const preloadedSrcs = new Set();
   function preloadUpcomingImages() {
     for (let i = 1; i <= 2; i++) {
       const next = state.queue[state.index + i];
       if (!next) break;
-      const src = `images/${next.category}/${next.id}.png`;
-      if (preloadedSrcs.has(src)) continue;
-      preloadedSrcs.add(src);
-      const img = new Image();
-      img.src = src;
+      const imgSrc = `images/${next.category}/${next.id}.png`;
+      if (!preloadedSrcs.has(imgSrc)) {
+        preloadedSrcs.add(imgSrc);
+        const img = new Image();
+        img.src = imgSrc;
+      }
+      const audioSrc = audioUrl(next);
+      if (!preloadedSrcs.has(audioSrc)) {
+        preloadedSrcs.add(audioSrc);
+        fetch(audioSrc).catch(() => {});
+      }
     }
   }
 
@@ -270,7 +276,7 @@
     }
 
     state.answerShown = true;
-    speak(card.reading);
+    speak(card);
   }
 
   function nextCard() {
@@ -283,14 +289,55 @@
   }
 
   function endQuiz() {
-    speechSynthesis.cancel();
+    stopSpeak();
     $('#end-count').textContent = state.queue.length;
     showScreen('screen-end');
   }
 
-  // ---- TTS ----
+  // ---- Audio (VOICEVOX No.7 アナウンス で事前生成した wav を再生) ----
+  // 取得失敗時は Web Speech API にフォールバック
+  let currentAudio = null;
   let preferredVoice = null;
   let speechWarmedUp = false;
+
+  function audioUrl(card) {
+    return `audio/${card.category}/${card.id}.wav`;
+  }
+
+  function stopSpeak() {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.src = '';
+      currentAudio = null;
+    }
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+  }
+
+  function speakViaTTS(text) {
+    if (!('speechSynthesis' in window)) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ja-JP';
+    u.rate = 0.9;
+    if (preferredVoice) u.voice = preferredVoice;
+    speechSynthesis.speak(u);
+  }
+
+  function speak(card) {
+    stopSpeak();
+    const audio = new Audio(audioUrl(card));
+    audio.preload = 'auto';
+    currentAudio = audio;
+    let fellBack = false;
+    const fallback = () => {
+      // 既に別の発話に切り替わっていればフォールバックしない（連打対応）
+      if (fellBack || currentAudio !== audio) return;
+      fellBack = true;
+      speakViaTTS(card.reading);
+    };
+    audio.addEventListener('error', fallback, { once: true });
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') p.catch(fallback);
+  }
 
   function pickBestVoice(voices) {
     const ja = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith('ja'));
@@ -326,8 +373,9 @@
     speechSynthesis.onvoiceschanged = loadVoices;
   }
 
-  // iOS Safari は最初の speak() が無音になることがあるため、
-  // ユーザー操作時に無音発話で初期化しておく
+  // iOS Safari はユーザー操作起点でないと音が出ない。
+  // 事前生成 wav の play() / Web Speech どちらでも同様なので、
+  // 設定画面・スタート時に無音発話で TTS フォールバック側を温めておく
   function warmUpSpeech() {
     if (speechWarmedUp || !('speechSynthesis' in window)) return;
     try {
@@ -337,16 +385,6 @@
       speechSynthesis.speak(u);
       speechWarmedUp = true;
     } catch (_) { /* noop */ }
-  }
-
-  function speak(text) {
-    if (!('speechSynthesis' in window)) return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ja-JP';
-    u.rate = 0.9;
-    if (preferredVoice) u.voice = preferredVoice;
-    speechSynthesis.speak(u);
   }
 
   // ---- Navigation bindings ----
@@ -365,12 +403,12 @@
     $('#btn-show-answer').addEventListener('click', showAnswer);
     $('#btn-replay').addEventListener('click', () => {
       const card = state.queue[state.index];
-      if (card) speak(card.reading);
+      if (card) speak(card);
     });
     $('#btn-next').addEventListener('click', nextCard);
     $('#btn-quiz-quit').addEventListener('click', () => {
       if (confirm('セッションを中断しますか?')) {
-        speechSynthesis.cancel();
+        stopSpeak();
         showScreen('screen-setup');
       }
     });
