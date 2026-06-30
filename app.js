@@ -181,20 +181,57 @@
     preloadUpcomingImages();
   }
 
-  // 拗音(ゃゅょ)・促音(っ)が続く場合は2文字を1ユニットとして扱う
-  function makeHint(label) {
-    if (!label || label.length === 0) return '';
-    if (label.length === 1) return label;
+  // 拗音(ゃゅょ)・促音(っ)を伴うモーラを1ユニットとして文字列を分割する
+  function getCharUnits(label) {
+    if (!label) return [];
     const small = /[ゃゅょぁぃぅぇぉっャュョァィゥェォッ]/;
-    const head = small.test(label[1]) ? label.slice(0, 2) : label[0];
-    return head + '〇'.repeat(label.length - head.length);
+    const units = [];
+    let i = 0;
+    while (i < label.length) {
+      if (i + 1 < label.length && small.test(label[i + 1])) {
+        units.push(label.slice(i, i + 2));
+        i += 2;
+      } else {
+        units.push(label[i]);
+        i++;
+      }
+    }
+    return units;
   }
 
   function showHint() {
     if (state.answerShown || state.hintShown) return;
     const card = state.queue[state.index];
-    $('#answer-label').textContent = makeHint(card.japanese_label);
-    $('#answer-label').classList.add('is-hint');
+    const units = getCharUnits(card.japanese_label);
+    if (units.length === 0) return;
+
+    const labelEl = $('#answer-label');
+    labelEl.textContent = '';
+    labelEl.classList.add('is-hint');
+
+    units.forEach((unit, idx) => {
+      const span = document.createElement('span');
+      span.className = 'hint-char';
+      if (idx === 0) {
+        span.textContent = unit;
+        span.classList.add('revealed');
+      } else {
+        span.textContent = '〇';
+        span.classList.add('masked');
+        span.setAttribute('role', 'button');
+        span.setAttribute('aria-label', 'タップして開く');
+        span.addEventListener('click', () => {
+          if (!span.classList.contains('masked')) return;
+          span.textContent = unit;
+          span.classList.remove('masked');
+          span.classList.add('revealed');
+          span.removeAttribute('role');
+          span.removeAttribute('aria-label');
+        });
+      }
+      labelEl.appendChild(span);
+    });
+
     $('#answer-area').hidden = false;
     $('#btn-replay').hidden = true;
     $('#btn-hint').hidden = true;

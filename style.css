@@ -443,6 +443,32 @@ body {
   color: var(--color-secondary);
   border-color: #fde68a;
   background: #fffbeb;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  padding: 14px 20px;
+}
+.hint-char {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1em;
+  padding: 2px 6px;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.2s ease, transform 0.15s ease;
+}
+.hint-char.masked {
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.hint-char.masked:hover { background: rgba(180, 83, 9, 0.08); }
+.hint-char.masked:active { background: rgba(180, 83, 9, 0.16); }
+.hint-char.revealed { color: var(--color-warn); animation: hint-pop 0.3s ease; }
+@keyframes hint-pop {
+  0%   { transform: scale(1.25); }
+  100% { transform: scale(1); }
 }
 
 .quiz-footer {
