@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="description" content="言語聴覚士のための絵カード呼称トレーニングアプリ" />
+  <meta name="theme-color" content="#2563eb" />
+  <!-- iOS / iPad ホーム画面追加対応 -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="ST絵カード" />
+  <meta name="format-detection" content="telephone=no" />
+  <!-- apple-touch-icon は後で画像を用意してから追加 -->
+  <title>ST絵カード呼称トレーニング</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main id="app">
+    <!-- スタート画面 -->
+    <section id="screen-start" class="screen is-active">
+      <div class="start-inner">
+        <h1 class="app-title">ST絵カード<br />呼称トレーニング</h1>
+        <p class="app-subtitle">言語聴覚療法用 呼称訓練アプリ</p>
+        <button id="btn-go-setup" class="btn btn-primary btn-large" type="button">はじめる</button>
+      </div>
+    </section>
+
+    <!-- 設定画面 -->
+    <section id="screen-setup" class="screen">
+      <header class="screen-header">
+        <button id="btn-setup-back" class="btn btn-ghost btn-icon" type="button" aria-label="ホームに戻る">←</button>
+        <h2 class="screen-title">出題設定</h2>
+        <div class="spacer"></div>
+      </header>
+
+      <div class="setup-body">
+        <section class="setup-section">
+          <h3 class="setup-section-title">カテゴリ <span class="hint">(複数選択可)</span></h3>
+          <div class="cat-actions">
+            <button class="btn btn-mini" type="button" data-cat-action="all">すべて選択</button>
+            <button class="btn btn-mini" type="button" data-cat-action="core">基本のみ</button>
+            <button class="btn btn-mini" type="button" data-cat-action="clear">クリア</button>
+          </div>
+          <div id="cat-list" class="checkbox-grid"></div>
+        </section>
+
+        <section class="setup-section">
+          <h3 class="setup-section-title">
+            親密度
+            <span class="hint">(やさしい / ふつう / むずかしい)</span>
+          </h3>
+          <div id="fam-list" class="checkbox-row">
+            <label class="chip-check">
+              <input type="checkbox" name="familiarity" value="high" checked />
+              <span>やさしい<small>(高親密度)</small></span>
+            </label>
+            <label class="chip-check">
+              <input type="checkbox" name="familiarity" value="mid" checked />
+              <span>ふつう<small>(中親密度)</small></span>
+            </label>
+            <label class="chip-check">
+              <input type="checkbox" name="familiarity" value="low" checked />
+              <span>むずかしい<small>(低親密度)</small></span>
+            </label>
+          </div>
+        </section>
+
+        <section class="setup-section">
+          <h3 class="setup-section-title">問題数</h3>
+          <div class="slider-row">
+            <input id="count-slider" type="range" min="5" max="50" step="5" value="10" />
+            <output id="count-value" class="slider-value">10</output>
+            <span class="slider-unit">問</span>
+          </div>
+        </section>
+
+        <section class="setup-section">
+          <h3 class="setup-section-title">出題順</h3>
+          <label class="toggle">
+            <input id="shuffle-toggle" type="checkbox" checked />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-label">ランダムに出題する</span>
+          </label>
+        </section>
+
+        <div class="setup-summary">
+          <div class="summary-line">
+            <span class="summary-key">該当する問題数:</span>
+            <span id="available-count" class="summary-value">0</span>
+            <span class="summary-unit">語</span>
+          </div>
+          <div id="setup-warning" class="warning" hidden></div>
+        </div>
+      </div>
+
+      <footer class="screen-footer">
+        <button id="btn-start" class="btn btn-primary btn-large" type="button">スタート</button>
+      </footer>
+    </section>
+
+    <!-- 出題画面 -->
+    <section id="screen-quiz" class="screen">
+      <header class="screen-header">
+        <button id="btn-quiz-quit" class="btn btn-ghost btn-icon" type="button" aria-label="中断">×</button>
+        <div class="progress">
+          <span id="progress-current">1</span>
+          <span class="progress-sep">/</span>
+          <span id="progress-total">10</span>
+        </div>
+        <div class="spacer"></div>
+      </header>
+
+      <div class="quiz-body">
+        <div class="card-frame">
+          <img id="card-image" alt="" />
+        </div>
+
+        <div id="answer-area" class="answer-area" hidden>
+          <div id="answer-label" class="answer-label"></div>
+          <button id="btn-replay" class="btn btn-secondary" type="button">
+            <span class="btn-icon-inline">🔊</span> もう一度再生
+          </button>
+        </div>
+      </div>
+
+      <footer class="screen-footer quiz-footer">
+        <button id="btn-show-answer" class="btn btn-primary btn-large" type="button">答えを見る</button>
+        <button id="btn-next" class="btn btn-primary btn-large" type="button" hidden>次へ</button>
+      </footer>
+    </section>
+
+    <!-- 終了画面 -->
+    <section id="screen-end" class="screen">
+      <div class="end-inner">
+        <div class="end-emoji" aria-hidden="true">🎉</div>
+        <h2 class="end-title">お疲れさまでした</h2>
+        <p class="end-sub"><span id="end-count">0</span>問完了しました</p>
+        <div class="end-buttons">
+          <button id="btn-again" class="btn btn-primary btn-large" type="button">もう一度</button>
+          <button id="btn-home" class="btn btn-ghost btn-large" type="button">ホームに戻る</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+[
+  { "id": "food",       "label": "食べ物",       "core": true  },
+  { "id": "animal",     "label": "動物",         "core": true  },
+  { "id": "vehicle",    "label": "乗り物",       "core": true  },
+  { "id": "daily",      "label": "日用品",       "core": true  },
+  { "id": "clothing",   "label": "衣類",         "core": true  },
+  { "id": "body",       "label": "身体部位",     "core": true  },
+  { "id": "furniture",  "label": "家具・家電",   "core": false },
+  { "id": "tool",       "label": "道具",         "core": false },
+  { "id": "nature",     "label": "自然",         "core": false },
+  { "id": "job",        "label": "職業",         "core": false },
+  { "id": "music",      "label": "楽器",         "core": false },
+  { "id": "stationery", "label": "文具",         "core": false },
+  { "id": "building",   "label": "建物・場所",   "core": false }
+]

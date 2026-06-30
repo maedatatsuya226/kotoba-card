@@ -1,0 +1,10 @@
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+.claude/
+.agents/
+node_modules/
+.wrangler/
+.dev.vars
