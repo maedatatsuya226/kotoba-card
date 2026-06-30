@@ -153,6 +153,7 @@
     state.queue = ordered.slice(0, Math.min(state.count, ordered.length));
     state.index = 0;
     state.answerShown = false;
+    preloadedSrcs.clear();
 
     $('#progress-total').textContent = state.queue.length;
     showScreen('screen-quiz');
@@ -172,6 +173,22 @@
     $('#btn-show-answer').hidden = false;
     $('#btn-next').hidden = true;
     state.answerShown = false;
+
+    preloadUpcomingImages();
+  }
+
+  // 次の2問の画像をバックグラウンドで先読み (体感速度向上)
+  const preloadedSrcs = new Set();
+  function preloadUpcomingImages() {
+    for (let i = 1; i <= 2; i++) {
+      const next = state.queue[state.index + i];
+      if (!next) break;
+      const src = `images/${next.category}/${next.id}.png`;
+      if (preloadedSrcs.has(src)) continue;
+      preloadedSrcs.add(src);
+      const img = new Image();
+      img.src = src;
+    }
   }
 
   function showAnswer() {
