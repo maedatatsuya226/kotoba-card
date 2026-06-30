@@ -14,6 +14,14 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const AUDIO_DIR = path.join(ROOT, 'audio');
 const FORCE = process.argv.includes('--force');
 
+// reading 通りに合成するとアクセント/読みが崩れる語を漢字等で上書き。
+// 規約上 reading は「ヒント機能等で使うかな表記」のままにし、TTS にだけ別テキストを渡す。
+// 追加時は本ファイルにエントリを足し、該当 wav を削除して再実行すれば差分生成される。
+const TTS_OVERRIDES = {
+  body_teeth: '歯',    // 「は」だけだと助詞「ワ」と読まれる
+  job_nurse:  '看護師', // 「かんごし」だと「カンゴ」+「シ」に分割される
+};
+
 async function exists(p) {
   try { await stat(p); return true; } catch { return false; }
 }
@@ -47,8 +55,10 @@ async function main() {
     if (!FORCE && await exists(outPath)) { skipped++; continue; }
 
     await mkdir(dir, { recursive: true });
-    process.stdout.write(`[${generated + 1}] ${card.id} (${card.reading}) ... `);
-    const wav = await synthesize(card.reading);
+    const ttsText = TTS_OVERRIDES[card.id] ?? card.reading;
+    const tag = ttsText === card.reading ? card.reading : `${card.reading} → ${ttsText}`;
+    process.stdout.write(`[${generated + 1}] ${card.id} (${tag}) ... `);
+    const wav = await synthesize(ttsText);
     await writeFile(outPath, wav);
     console.log(`${(wav.length / 1024).toFixed(1)} KB`);
     generated++;
