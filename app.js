@@ -5,8 +5,8 @@
     cards: [],
     categories: [],
     selectedCategories: new Set(),
-    selectedFamiliarities: new Set(['high', 'mid', 'low']),
-    count: 10,
+    // 親密度ごとの出題問題数 (合計が総問題数)
+    familiarityCounts: { high: 5, mid: 3, low: 2 },
     shuffle: true,
     queue: [],
     index: 0,
@@ -14,7 +14,14 @@
     hintShown: false,
   };
 
+  const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
+  const PRESETS = {
+    easy:     { high: 10, mid: 0,  low: 0 },
+    balanced: { high: 4,  mid: 4,  low: 2 },
+    hard:     { high: 2,  mid: 4,  low: 4 },
+    clear:    { high: 0,  mid: 0,  low: 0 },
+  };
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -80,23 +87,28 @@
     });
   }
 
-  function bindFamiliarityInputs() {
-    $$('#fam-list input[name=familiarity]').forEach((cb) => {
-      cb.addEventListener('change', (e) => {
-        if (e.target.checked) state.selectedFamiliarities.add(e.target.value);
-        else state.selectedFamiliarities.delete(e.target.value);
+  function bindFamiliaritySliders() {
+    FAM_KEYS.forEach((fam) => {
+      const slider = $(`#count-${fam}`);
+      slider.addEventListener('input', (e) => {
+        state.familiarityCounts[fam] = parseInt(e.target.value, 10);
         updateSummary();
       });
     });
   }
 
-  function bindSlider() {
-    const slider = $('#count-slider');
-    const value = $('#count-value');
-    slider.addEventListener('input', (e) => {
-      state.count = parseInt(e.target.value, 10);
-      value.textContent = state.count;
-      updateSummary();
+  function bindFamiliarityPresets() {
+    $$('[data-fam-preset]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const preset = PRESETS[btn.dataset.famPreset];
+        if (!preset) return;
+        const avail = getAvailableByFamiliarity();
+        // プリセット値を利用可能数でクランプ
+        FAM_KEYS.forEach((fam) => {
+          state.familiarityCounts[fam] = Math.min(preset[fam], avail[fam]);
+        });
+        updateSummary();
+      });
     });
   }
 
@@ -106,30 +118,58 @@
     });
   }
 
-  function getFilteredCards() {
-    return state.cards.filter(
-      (c) =>
-        state.selectedCategories.has(c.category) &&
-        state.selectedFamiliarities.has(c.familiarity)
-    );
+  // 選択中カテゴリ内で親密度別に利用可能なカード数を返す
+  function getAvailableByFamiliarity() {
+    const result = { high: 0, mid: 0, low: 0 };
+    for (const c of state.cards) {
+      if (!state.selectedCategories.has(c.category)) continue;
+      if (result[c.familiarity] !== undefined) result[c.familiarity]++;
+    }
+    return result;
+  }
+
+  // 選択中カテゴリ内で親密度別のカードプールを返す
+  function getCandidatesByFamiliarity() {
+    const result = { high: [], mid: [], low: [] };
+    for (const c of state.cards) {
+      if (!state.selectedCategories.has(c.category)) continue;
+      if (result[c.familiarity]) result[c.familiarity].push(c);
+    }
+    return result;
   }
 
   function updateSummary() {
-    const filtered = getFilteredCards();
-    const available = filtered.length;
-    $('#available-count').textContent = available;
+    const avail = getAvailableByFamiliarity();
+    let total = 0;
+
+    FAM_KEYS.forEach((fam) => {
+      const max = avail[fam];
+      const slider = $(`#count-${fam}`);
+      // 現在の値を新しい最大値でクランプ
+      if (state.familiarityCounts[fam] > max) state.familiarityCounts[fam] = max;
+      slider.max = max;
+      slider.value = state.familiarityCounts[fam];
+      slider.disabled = max === 0;
+      $(`#count-${fam}-value`).textContent = state.familiarityCounts[fam];
+      $(`#count-${fam}-max`).textContent = max;
+      slider.closest('.fam-slider').classList.toggle('is-empty', max === 0);
+      total += state.familiarityCounts[fam];
+    });
+
+    $('#count-total-value').textContent = total;
 
     const startBtn = $('#btn-start');
     const warning = $('#setup-warning');
+    const anyCategory = state.selectedCategories.size > 0;
 
-    if (available === 0) {
+    if (!anyCategory) {
       startBtn.disabled = true;
       warning.hidden = false;
-      warning.textContent = '条件に合うカードがありません。カテゴリまたは親密度を選択してください。';
-    } else if (available < state.count) {
-      startBtn.disabled = false;
+      warning.textContent = 'カテゴリを1つ以上選択してください。';
+    } else if (total === 0) {
+      startBtn.disabled = true;
       warning.hidden = false;
-      warning.textContent = `該当語数が問題数より少ないため、${available}問出題されます。`;
+      warning.textContent = '各親密度の問題数がすべて 0 です。1つ以上に問題数を設定してください。';
     } else {
       startBtn.disabled = false;
       warning.hidden = true;
@@ -147,11 +187,22 @@
   }
 
   function startQuiz() {
-    const pool = getFilteredCards();
-    if (pool.length === 0) return;
+    const candidates = getCandidatesByFamiliarity();
+    const picks = [];
 
-    const ordered = state.shuffle ? shuffleArray(pool) : pool.slice();
-    state.queue = ordered.slice(0, Math.min(state.count, ordered.length));
+    // 親密度ごとに指定数だけ抽出（シャッフルON時は各プール内でシャッフル）
+    FAM_KEYS.forEach((fam) => {
+      const wanted = state.familiarityCounts[fam];
+      if (wanted <= 0) return;
+      const pool = candidates[fam];
+      const ordered = state.shuffle ? shuffleArray(pool) : pool.slice();
+      picks.push(...ordered.slice(0, Math.min(wanted, pool.length)));
+    });
+
+    if (picks.length === 0) return;
+
+    // 全体をシャッフル (シャッフルOFFなら high→mid→low 順で出題)
+    state.queue = state.shuffle ? shuffleArray(picks) : picks;
     state.index = 0;
     state.answerShown = false;
     preloadedSrcs.clear();
@@ -429,8 +480,8 @@
     }
     renderCategoryList();
     bindCategoryActions();
-    bindFamiliarityInputs();
-    bindSlider();
+    bindFamiliaritySliders();
+    bindFamiliarityPresets();
     bindShuffleToggle();
     bindNavigation();
     updateSummary();

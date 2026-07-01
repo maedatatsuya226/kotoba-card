@@ -48,31 +48,54 @@
 
         <section class="setup-section">
           <h3 class="setup-section-title">
-            親密度
-            <span class="hint">(やさしい / ふつう / むずかしい)</span>
+            問題数と出題割合
+            <span class="hint">(親密度ごとに問題数を指定)</span>
           </h3>
-          <div id="fam-list" class="checkbox-row">
-            <label class="chip-check">
-              <input type="checkbox" name="familiarity" value="high" checked />
-              <span>やさしい<small>(高親密度)</small></span>
-            </label>
-            <label class="chip-check">
-              <input type="checkbox" name="familiarity" value="mid" checked />
-              <span>ふつう<small>(中親密度)</small></span>
-            </label>
-            <label class="chip-check">
-              <input type="checkbox" name="familiarity" value="low" checked />
-              <span>むずかしい<small>(低親密度)</small></span>
-            </label>
+          <div class="fam-actions">
+            <button class="btn btn-mini" type="button" data-fam-preset="easy">やさしい中心</button>
+            <button class="btn btn-mini" type="button" data-fam-preset="balanced">バランス</button>
+            <button class="btn btn-mini" type="button" data-fam-preset="hard">むずかしめ</button>
+            <button class="btn btn-mini" type="button" data-fam-preset="clear">クリア</button>
           </div>
-        </section>
-
-        <section class="setup-section">
-          <h3 class="setup-section-title">問題数</h3>
-          <div class="slider-row">
-            <input id="count-slider" type="range" min="5" max="50" step="5" value="10" />
-            <output id="count-value" class="slider-value">10</output>
-            <span class="slider-unit">問</span>
+          <div class="fam-slider-list">
+            <div class="fam-slider" data-fam="high">
+              <div class="fam-slider-header">
+                <span class="fam-slider-name">やさしい <small>(高頻度)</small></span>
+                <span class="fam-slider-readout">
+                  <output id="count-high-value" class="fam-slider-value">5</output>
+                  <span class="fam-slider-unit">問</span>
+                  <small class="fam-slider-max">/ <span id="count-high-max">0</span>語</small>
+                </span>
+              </div>
+              <input id="count-high" type="range" min="0" max="0" value="5" />
+            </div>
+            <div class="fam-slider" data-fam="mid">
+              <div class="fam-slider-header">
+                <span class="fam-slider-name">ふつう <small>(中頻度)</small></span>
+                <span class="fam-slider-readout">
+                  <output id="count-mid-value" class="fam-slider-value">3</output>
+                  <span class="fam-slider-unit">問</span>
+                  <small class="fam-slider-max">/ <span id="count-mid-max">0</span>語</small>
+                </span>
+              </div>
+              <input id="count-mid" type="range" min="0" max="0" value="3" />
+            </div>
+            <div class="fam-slider" data-fam="low">
+              <div class="fam-slider-header">
+                <span class="fam-slider-name">むずかしい <small>(低頻度)</small></span>
+                <span class="fam-slider-readout">
+                  <output id="count-low-value" class="fam-slider-value">2</output>
+                  <span class="fam-slider-unit">問</span>
+                  <small class="fam-slider-max">/ <span id="count-low-max">0</span>語</small>
+                </span>
+              </div>
+              <input id="count-low" type="range" min="0" max="0" value="2" />
+            </div>
+          </div>
+          <div class="fam-slider-total">
+            <span class="fam-slider-total-key">合計:</span>
+            <span id="count-total-value" class="fam-slider-total-num">10</span>
+            <span class="fam-slider-total-unit">問</span>
           </div>
         </section>
 
@@ -86,11 +109,6 @@
         </section>
 
         <div class="setup-summary">
-          <div class="summary-line">
-            <span class="summary-key">該当する問題数:</span>
-            <span id="available-count" class="summary-value">0</span>
-            <span class="summary-unit">語</span>
-          </div>
           <div id="setup-warning" class="warning" hidden></div>
         </div>
       </div>
