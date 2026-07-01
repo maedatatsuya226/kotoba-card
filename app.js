@@ -489,6 +489,19 @@
 
   document.addEventListener('DOMContentLoaded', init);
 
+  // style.css の読込失敗を検知したら SW キャッシュを飛ばして再取得を試みる
+  // (Critical CSS がインライン化されているので画面は動くが、装飾を復旧させる)
+  function recoverStyleIfMissing() {
+    if (document.documentElement.dataset.cssFailed !== '1') return;
+    const bust = 'style.css?retry=' + Date.now();
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = bust;
+    link.onload = () => { delete document.documentElement.dataset.cssFailed; };
+    document.head.appendChild(link);
+  }
+  window.addEventListener('load', recoverStyleIfMissing);
+
   // Service Worker 登録 (オフライン動作用)
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

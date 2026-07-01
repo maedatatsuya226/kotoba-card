@@ -14,7 +14,19 @@
   <link rel="apple-touch-icon" href="images/app/kotoba-card-icon.png" />
   <link rel="manifest" href="manifest.json" />
   <title>ST絵カード呼称トレーニング</title>
-  <link rel="stylesheet" href="style.css" />
+  <!--
+    Critical CSS: style.css の読み込みに失敗しても最低限「1画面ずつ表示」
+    「hidden要素は非表示」だけは効かせる保険 (SW更新中や iOS Safari 特有の
+    FOUC で style.css が反映されないケースへの graceful degradation)
+  -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+    [hidden] { display: none !important; }
+    .screen { display: none; min-height: 100vh; min-height: 100dvh; flex-direction: column; }
+    .screen.is-active { display: flex; }
+  </style>
+  <link rel="stylesheet" href="style.css" onerror="document.documentElement.dataset.cssFailed='1'" />
 </head>
 <body>
   <main id="app">
