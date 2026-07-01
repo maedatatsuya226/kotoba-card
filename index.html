@@ -69,6 +69,18 @@
             <button class="btn btn-mini" type="button" data-fam-preset="hard">むずかしめ</button>
             <button class="btn btn-mini" type="button" data-fam-preset="clear">クリア</button>
           </div>
+          <div class="fam-slider fam-slider--total">
+            <div class="fam-slider-header">
+              <span class="fam-slider-name fam-slider-name--total">総問題数</span>
+              <span class="fam-slider-readout">
+                <output id="count-total-slider-value" class="fam-slider-value fam-slider-value--total">10</output>
+                <span class="fam-slider-unit">問</span>
+                <small class="fam-slider-max">/ <span id="count-total-max">0</span>語</small>
+              </span>
+            </div>
+            <input id="count-total-slider" type="range" min="0" max="0" value="10" />
+          </div>
+          <div class="fam-breakdown-label">内訳 <span class="hint">(比率を変えたい時に個別調整)</span></div>
           <div class="fam-slider-list">
             <div class="fam-slider" data-fam="high">
               <div class="fam-slider-header">
@@ -103,11 +115,6 @@
               </div>
               <input id="count-low" type="range" min="0" max="0" value="2" />
             </div>
-          </div>
-          <div class="fam-slider-total">
-            <span class="fam-slider-total-key">合計:</span>
-            <span id="count-total-value" class="fam-slider-total-num">10</span>
-            <span class="fam-slider-total-unit">問</span>
           </div>
         </section>
 

@@ -1,7 +1,7 @@
 // Service Worker for kotoba-card (ST絵カード呼称トレーニング)
 // 全アセットを初回訪問時にキャッシュし、以降オフラインで動作させる
 
-const CACHE_NAME = 'kotoba-card-v7';
+const CACHE_NAME = 'kotoba-card-v8';
 
 const SHELL_ASSETS = [
   './',

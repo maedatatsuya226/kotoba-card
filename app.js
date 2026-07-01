@@ -97,6 +97,75 @@
     });
   }
 
+  function bindTotalSlider() {
+    const slider = $('#count-total-slider');
+    slider.addEventListener('input', (e) => {
+      const desired = parseInt(e.target.value, 10);
+      scaleToTotal(desired);
+      updateSummary();
+    });
+  }
+
+  // 現在の比率を保ったまま合計問題数を desiredTotal に近づける (Hamilton法)
+  // 各親密度の avail 上限に達した分は他親密度に吸収させる
+  function scaleToTotal(desiredTotal) {
+    const avail = getAvailableByFamiliarity();
+    const current = state.familiarityCounts;
+    const currentTotal = current.high + current.mid + current.low;
+    const totalAvail = avail.high + avail.mid + avail.low;
+    const target = Math.max(0, Math.min(desiredTotal, totalAvail));
+
+    if (target === 0) {
+      state.familiarityCounts = { high: 0, mid: 0, low: 0 };
+      return;
+    }
+
+    // 現在の合計が 0 の場合は high→mid→low の順に埋める
+    if (currentTotal === 0) {
+      let remaining = target;
+      const result = { high: 0, mid: 0, low: 0 };
+      for (const fam of FAM_KEYS) {
+        result[fam] = Math.min(remaining, avail[fam]);
+        remaining -= result[fam];
+      }
+      state.familiarityCounts = result;
+      return;
+    }
+
+    // Hamilton法: 各親密度の理想値を計算し、floor(avail上限でクランプ) と余りを出す
+    const raw = {}, floor = {}, remainder = {};
+    for (const fam of FAM_KEYS) {
+      raw[fam] = (current[fam] / currentTotal) * target;
+      const floorRaw = Math.floor(raw[fam]);
+      floor[fam] = Math.min(floorRaw, avail[fam]);
+      // 上限に達していれば remainder は 0 (これ以上増やせない)
+      remainder[fam] = floor[fam] < avail[fam] ? raw[fam] - floorRaw : 0;
+    }
+    const result = { ...floor };
+    let sum = result.high + result.mid + result.low;
+
+    // fractional part が大きい順に +1 (Hamilton の丸め分配)
+    const order = FAM_KEYS.slice().sort((a, b) => remainder[b] - remainder[a]);
+    for (const fam of order) {
+      if (sum >= target) break;
+      if (result[fam] < avail[fam]) { result[fam]++; sum++; }
+    }
+
+    // 上限で吸収しきれなかった分は、余裕のある親密度に順次流し込む
+    while (sum < target) {
+      let progressed = false;
+      for (const fam of FAM_KEYS) {
+        if (result[fam] < avail[fam]) {
+          result[fam]++; sum++; progressed = true;
+          if (sum >= target) break;
+        }
+      }
+      if (!progressed) break;
+    }
+
+    state.familiarityCounts = result;
+  }
+
   function bindFamiliarityPresets() {
     $$('[data-fam-preset]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -141,9 +210,11 @@
   function updateSummary() {
     const avail = getAvailableByFamiliarity();
     let total = 0;
+    let totalAvail = 0;
 
     FAM_KEYS.forEach((fam) => {
       const max = avail[fam];
+      totalAvail += max;
       const slider = $(`#count-${fam}`);
       // 現在の値を新しい最大値でクランプ
       if (state.familiarityCounts[fam] > max) state.familiarityCounts[fam] = max;
@@ -156,7 +227,13 @@
       total += state.familiarityCounts[fam];
     });
 
-    $('#count-total-value').textContent = total;
+    // 総問題数スライダーを更新
+    const totalSlider = $('#count-total-slider');
+    totalSlider.max = totalAvail;
+    totalSlider.value = total;
+    totalSlider.disabled = totalAvail === 0;
+    $('#count-total-slider-value').textContent = total;
+    $('#count-total-max').textContent = totalAvail;
 
     const startBtn = $('#btn-start');
     const warning = $('#setup-warning');
@@ -169,7 +246,7 @@
     } else if (total === 0) {
       startBtn.disabled = true;
       warning.hidden = false;
-      warning.textContent = '各親密度の問題数がすべて 0 です。1つ以上に問題数を設定してください。';
+      warning.textContent = '総問題数が 0 です。スライダーで問題数を設定してください。';
     } else {
       startBtn.disabled = false;
       warning.hidden = true;
@@ -481,6 +558,7 @@
     renderCategoryList();
     bindCategoryActions();
     bindFamiliaritySliders();
+    bindTotalSlider();
     bindFamiliarityPresets();
     bindShuffleToggle();
     bindNavigation();

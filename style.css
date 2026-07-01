@@ -353,22 +353,27 @@ body {
 .fam-slider-unit { font-size: 13px; color: var(--color-muted); }
 .fam-slider-max { font-size: 12px; color: var(--color-muted); margin-left: 8px; }
 
-.fam-slider-total {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--color-border);
-  display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 6px;
+/* 総問題数スライダー (親密度スライダーより上に配置、より目立たせる) */
+.fam-slider--total {
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 18px;
 }
-.fam-slider-total-key { font-size: 14px; color: var(--color-muted); }
-.fam-slider-total-num {
-  font-size: 26px;
-  font-weight: 700;
+.fam-slider-name--total {
+  font-size: 16px;
   color: var(--color-primary);
 }
-.fam-slider-total-unit { font-size: 14px; color: var(--color-muted); }
+.fam-slider-value--total {
+  font-size: 26px;
+}
+.fam-breakdown-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+  margin-bottom: 10px;
+  padding-left: 2px;
+}
 
 /* ===== Toggle ===== */
 .toggle {
