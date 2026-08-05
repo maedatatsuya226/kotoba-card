@@ -580,10 +580,35 @@
   }
   window.addEventListener('load', recoverStyleIfMissing);
 
-  // Service Worker 登録 (オフライン動作用)
+  // Service Worker 登録 (オフライン動作用) + 起動時の更新チェック
+  // オンラインなら新バージョンを取得して自動反映、オフラインならキャッシュ済みの
+  // バージョンでそのまま動く(更新チェックは黙って失敗する)
   if ('serviceWorker' in navigator) {
+    // controllerchange は初回インストール時(clients.claim)にも発火するため、
+    // 「既にSW管理下だったページが新SWに切り替わった」時だけリロードする
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloaded) return;
+      reloaded = true;
+      // 訓練中のリロードは患者の混乱を招くため、スタート画面の時だけ即反映。
+      // それ以外の画面では次回起動時に新バージョンで立ち上がる
+      const active = document.querySelector('.screen.is-active');
+      if (!active || active.id === 'screen-start') {
+        window.location.reload();
+      }
+    });
+
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch((err) => {
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        // iPadのPWAはアプリスイッチャーに残り続けてページが再読込されないため、
+        // 前面に復帰したタイミングでも更新チェックを行う
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            reg.update().catch(() => {});
+          }
+        });
+      }).catch((err) => {
         console.warn('SW registration failed:', err);
       });
     });
