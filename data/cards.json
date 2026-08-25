@@ -102,7 +102,7 @@
   { "id": "nature_tree",     "category": "nature",      "japanese_label": "き",           "reading": "き",           "familiarity": "high", "english_prompt": "a single green leafy tree" },
   { "id": "nature_flower",   "category": "nature",      "japanese_label": "はな",         "reading": "はな",         "familiarity": "high", "english_prompt": "a single red tulip flower with stem and leaves" },
   { "id": "nature_grass",    "category": "nature",      "japanese_label": "くさ",         "reading": "くさ",         "familiarity": "high", "english_prompt": "a small tuft of green grass" },
-  { "id": "nature_mountain", "category": "nature",      "japanese_label": "やま",         "reading": "やま",         "familiarity": "high", "english_prompt": "a single mountain with snow-capped peak" },
+  { "id": "nature_mountain", "category": "nature",      "japanese_label": "やま",         "reading": "やま",         "familiarity": "high", "english_prompt": "a single lush green mountain" },
   { "id": "nature_sea",      "category": "nature",      "japanese_label": "うみ",         "reading": "うみ",         "familiarity": "high", "english_prompt": "ocean waves with horizon line" },
   { "id": "nature_river",    "category": "nature",      "japanese_label": "かわ",         "reading": "かわ",         "familiarity": "high", "english_prompt": "a flowing river between green banks, top-down view" },
   { "id": "nature_sun",      "category": "nature",      "japanese_label": "たいよう",     "reading": "たいよう",     "familiarity": "high", "english_prompt": "a bright yellow sun with rays" },
