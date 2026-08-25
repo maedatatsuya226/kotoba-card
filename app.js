@@ -26,7 +26,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v21';
+  const APP_VERSION = 'v22';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -428,7 +428,18 @@
     $('#answer-label').classList.remove('is-hint');
     $('#btn-hint').hidden = isSelect || isMatch;
     $('#btn-show-answer').hidden = isSelect || isMatch;
-    $('#btn-next').hidden = true;
+    // 選択・線つなぎでは「次へ」を最初からグレー表示しておく。
+    // 後から出現させるとフッターの高さが変わり、線つなぎの線がずれるため
+    const btnNext = $('#btn-next');
+    if (isSelect || isMatch) {
+      const lastIndex = (isMatch ? state.matchChunks.length : state.queue.length) - 1;
+      btnNext.textContent = state.index === lastIndex ? '終了' : '次へ';
+      btnNext.hidden = false;
+      btnNext.disabled = true;
+    } else {
+      btnNext.hidden = true;
+      btnNext.disabled = false;
+    }
     state.answerShown = false;
     state.hintShown = false;
 
@@ -476,9 +487,7 @@
           grid.classList.add('is-answered');
           state.answerShown = true;
           speak(target);
-          $('#btn-next').textContent =
-            state.index === state.queue.length - 1 ? '終了' : '次へ';
-          $('#btn-next').hidden = false;
+          $('#btn-next').disabled = false;
         } else {
           btn.classList.add('is-wrong');
         }
@@ -603,9 +612,7 @@
       speak(word.card);
       if (matchState.items.every((it) => it.done)) {
         state.answerShown = true;
-        $('#btn-next').textContent =
-          state.index === state.matchChunks.length - 1 ? '終了' : '次へ';
-        $('#btn-next').hidden = false;
+        $('#btn-next').disabled = false;
       }
     } else {
       // 不正解: 両方を一瞬赤くして選択解除
@@ -695,6 +702,18 @@
     redrawMatchLines();
   }
   window.addEventListener('resize', sizeMatchCards);
+
+  // フォント読み込みやボタン表示などでレイアウトが後から微調整されると
+  // 引き終わった線がずれるため、盤面のサイズ変化を監視して常に再同期する
+  if ('ResizeObserver' in window) {
+    const observer = new ResizeObserver(() => sizeMatchCards());
+    document.addEventListener('DOMContentLoaded', () => {
+      ['#match-area', '#match-words', '#match-pics'].forEach((sel) => {
+        const el = document.querySelector(sel);
+        if (el) observer.observe(el);
+      });
+    });
+  }
 
   // 拗音(ゃゅょ)・促音(っ)を伴うモーラを1ユニットとして文字列を分割する
   function getCharUnits(label) {

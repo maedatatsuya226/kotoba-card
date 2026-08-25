@@ -611,6 +611,9 @@ body {
 .quiz-footer {
   display: flex;
   gap: 12px;
+  /* ボタンの表示/非表示で高さが変わると盤面がずれる (線つなぎの線が
+     置き去りになる) ため、ボタン1個分の高さを常に確保しておく */
+  min-height: calc(92px + env(safe-area-inset-bottom));
 }
 .quiz-footer .btn { flex: 1; }
 
