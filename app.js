@@ -24,7 +24,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v19';
+  const APP_VERSION = 'v20';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -650,6 +650,7 @@
   }
 
   // 絵カードの1辺を「列の高さ / 組数」に収まるように計算する
+  // (列の幅はカード自身の幅で決まるため上限に使わない。横は十分広い)
   function sizeMatchCards() {
     if ($('#match-area').hidden) return;
     const picsEl = $('#match-pics');
@@ -657,8 +658,7 @@
     if (n === 0) return;
     const gap = 12;
     const colH = picsEl.clientHeight;
-    const colW = picsEl.clientWidth;
-    const size = Math.max(64, Math.floor(Math.min((colH - gap * (n - 1)) / n, colW, 180)));
+    const size = Math.max(64, Math.floor(Math.min((colH - gap * (n - 1)) / n, 230)));
     $('#match-area').style.setProperty('--match-card-size', `${size}px`);
     redrawMatchLines();
   }
