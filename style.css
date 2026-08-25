@@ -494,8 +494,18 @@ body {
 }
 .progress-sep { color: var(--color-muted); margin: 0 6px; }
 
+/* 出題画面は1画面固定 (スクロールさせず、中身の方を縮めて収める) */
+#screen-quiz {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  max-height: 100vh;
+  max-height: 100dvh;
+}
+
 .quiz-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 20px 18px;
   display: flex;
@@ -511,6 +521,9 @@ body {
   width: 100%;
   max-width: 460px;
   aspect-ratio: 1 / 1;
+  /* 答え表示などで高さが足りない時はカード側が縮む (スクロールさせない) */
+  flex-shrink: 1;
+  min-height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -531,6 +544,7 @@ body {
   gap: 14px;
   width: 100%;
   max-width: 460px;
+  flex-shrink: 0;
 }
 .answer-label {
   font-size: clamp(36px, 8vw, 52px);
@@ -584,34 +598,46 @@ body {
 .quiz-footer .btn { flex: 1; }
 
 /* ===== 選択モード ===== */
+/* 画面の残り高さいっぱいに広げ、カード側を縮めてスクロールなしで収める */
 .select-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  align-self: stretch;
 }
 .select-prompt {
-  font-size: clamp(36px, 8vw, 52px);
+  /* 高さ基準でも縮む (iPad横持ちで場所を取りすぎない) */
+  font-size: clamp(26px, min(8vw, 6.5vh), 52px);
   font-weight: 700;
   color: #0f172a;
   text-align: center;
   letter-spacing: 0.05em;
   background: white;
   border-radius: var(--radius-lg);
-  padding: 18px 40px;
+  padding: 12px 36px;
   box-shadow: var(--shadow-sm);
   border: 2px solid var(--color-primary-soft);
+  flex-shrink: 0;
 }
 
 .choice-grid {
   display: grid;
   gap: 14px;
   width: 100%;
-  /* 列数は JS が枚数から決めて --cols にセットする。
-     1カードあたり最大230pxとしてグリッド全体の幅を列数に比例させる */
+  /* 列数・行数は JS が枚数から決めて --cols / --rows にセットする。
+     1カードあたり最大230pxとしてグリッド全体の幅を列数に比例させ、
+     高さは残りスペースに 1fr で均等割りしてカードをその中に収める */
   grid-template-columns: repeat(var(--cols, 3), 1fr);
+  grid-template-rows: repeat(var(--rows, 1), minmax(0, 1fr));
   max-width: calc(var(--cols, 3) * 230px + (var(--cols, 3) - 1) * 14px);
+  flex: 1;
+  min-height: 0;
+  justify-items: center;
+  align-items: center;
 }
 
 .choice-card {
@@ -621,7 +647,12 @@ body {
   background: white;
   border: 3px solid var(--color-border);
   border-radius: var(--radius-lg);
+  /* セル内に収まる最大の正方形になる (幅・高さの小さい方に合わせて縮む) */
   aspect-ratio: 1 / 1;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;

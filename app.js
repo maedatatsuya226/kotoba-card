@@ -371,6 +371,7 @@
     const n = choices.length;
     const cols = n === 1 ? 1 : n === 2 ? 2 : n === 4 ? 2 : n <= 9 ? 3 : 4;
     grid.style.setProperty('--cols', cols);
+    grid.style.setProperty('--rows', Math.ceil(n / cols));
     grid.classList.remove('is-answered');
 
     choices.forEach((choice) => {
