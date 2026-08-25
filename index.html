@@ -59,6 +59,10 @@
               <span class="mode-btn-title">選択</span>
               <span class="mode-btn-desc">ことばに合う絵を選ぶ</span>
             </button>
+            <button class="mode-btn" type="button" data-mode="matching">
+              <span class="mode-btn-title">線つなぎ</span>
+              <span class="mode-btn-desc">ことばと絵を線でつなぐ</span>
+            </button>
           </div>
           <div id="choice-count-row" class="choice-count-row" hidden>
             <div class="choice-count-header">
@@ -69,6 +73,16 @@
               </span>
             </div>
             <input id="choice-count-slider" type="range" min="1" max="12" value="3" />
+          </div>
+          <div id="pair-count-row" class="choice-count-row" hidden>
+            <div class="choice-count-header">
+              <span class="choice-count-label">組の数 <span class="hint">(1画面あたり)</span></span>
+              <span class="choice-count-readout">
+                <output id="pair-count-value" class="choice-count-value">3</output>
+                <span class="choice-count-unit">組</span>
+              </span>
+            </div>
+            <input id="pair-count-slider" type="range" min="2" max="5" value="3" />
           </div>
         </section>
 
@@ -189,6 +203,15 @@
         <div id="select-area" class="select-area" hidden>
           <div id="select-prompt" class="select-prompt"></div>
           <div id="choice-grid" class="choice-grid"></div>
+        </div>
+
+        <!-- 線つなぎモード: ことばと絵カードを線でつなぐ -->
+        <div id="match-area" class="match-area" hidden>
+          <div class="match-columns">
+            <div id="match-words" class="match-words"></div>
+            <div id="match-pics" class="match-pics"></div>
+          </div>
+          <svg id="match-lines" class="match-lines" aria-hidden="true"></svg>
         </div>
       </div>
 

@@ -9,11 +9,15 @@
     familiarityCounts: { high: 5, mid: 3, low: 2 },
     shuffle: true,
     // 課題の種類: 'naming' = 呼称(絵→ことば) / 'select' = 選択(ことば→絵)
+    //             / 'matching' = 線つなぎ(ことば⇔絵の対応づけ)
     mode: 'naming',
     choiceCount: 3,
+    pairCount: 3,
     queue: [],
     // 選択モード: 出題ごとの選択肢カード配列 (queue と同じ並び)
     choiceSets: [],
+    // 線つなぎモード: queue を組数ごとに区切った画面単位の配列
+    matchChunks: [],
     index: 0,
     answerShown: false,
     hintShown: false,
@@ -200,12 +204,18 @@
           b.classList.toggle('is-selected', b === btn);
         });
         $('#choice-count-row').hidden = state.mode !== 'select';
+        $('#pair-count-row').hidden = state.mode !== 'matching';
       });
     });
 
     $('#choice-count-slider').addEventListener('input', (e) => {
       state.choiceCount = parseInt(e.target.value, 10);
       $('#choice-count-value').textContent = state.choiceCount;
+    });
+
+    $('#pair-count-slider').addEventListener('input', (e) => {
+      state.pairCount = parseInt(e.target.value, 10);
+      $('#pair-count-value').textContent = state.pairCount;
     });
   }
 
@@ -312,7 +322,23 @@
       ? state.queue.map((card) => buildChoices(card))
       : [];
 
-    $('#progress-total').textContent = state.queue.length;
+    // 線つなぎモード: queue を組数ごとの画面に区切る。
+    // 最後の画面が1組だけになる場合は前の画面に合流させる
+    if (state.mode === 'matching') {
+      const chunks = [];
+      for (let i = 0; i < state.queue.length; i += state.pairCount) {
+        chunks.push(state.queue.slice(i, i + state.pairCount));
+      }
+      if (chunks.length > 1 && chunks[chunks.length - 1].length === 1) {
+        chunks[chunks.length - 2].push(...chunks.pop());
+      }
+      state.matchChunks = chunks;
+    } else {
+      state.matchChunks = [];
+    }
+
+    $('#progress-total').textContent =
+      state.mode === 'matching' ? state.matchChunks.length : state.queue.length;
     showScreen('screen-quiz');
     renderCurrentCard();
   }
@@ -334,24 +360,28 @@
   }
 
   function renderCurrentCard() {
-    const card = state.queue[state.index];
     $('#progress-current').textContent = state.index + 1;
 
     const isSelect = state.mode === 'select';
-    $('#card-frame').hidden = isSelect;
+    const isMatch = state.mode === 'matching';
+    $('#card-frame').hidden = isSelect || isMatch;
     $('#select-area').hidden = !isSelect;
+    $('#match-area').hidden = !isMatch;
     $('#answer-area').hidden = true;
     $('#answer-label').textContent = '';
     $('#answer-label').classList.remove('is-hint');
-    $('#btn-hint').hidden = isSelect;
-    $('#btn-show-answer').hidden = isSelect;
+    $('#btn-hint').hidden = isSelect || isMatch;
+    $('#btn-show-answer').hidden = isSelect || isMatch;
     $('#btn-next').hidden = true;
     state.answerShown = false;
     state.hintShown = false;
 
-    if (isSelect) {
-      renderChoiceQuestion(card);
+    if (isMatch) {
+      renderMatchQuestion(state.matchChunks[state.index]);
+    } else if (isSelect) {
+      renderChoiceQuestion(state.queue[state.index]);
     } else {
+      const card = state.queue[state.index];
       const img = $('#card-image');
       img.src = `images/${card.category}/${card.id}.png`;
       img.alt = card.japanese_label;
@@ -420,6 +450,196 @@
   }
   window.addEventListener('resize', sizeChoiceCards);
 
+  // ---- 線つなぎモード ----
+  // ことば(左列)と絵カード(右列)を指でなぞって線でつなぐ。
+  // ドラッグでもタップ→タップでもつなげる (運動麻痺のある患者への配慮)
+  const matchState = {
+    items: [],        // { card, side: 'word'|'pic', el, done }
+    connections: [],  // { wordEl, picEl }
+    pending: null,    // タップ選択中のアイテム
+  };
+
+  function renderMatchQuestion(chunk) {
+    const wordsEl = $('#match-words');
+    const picsEl = $('#match-pics');
+    wordsEl.innerHTML = '';
+    picsEl.innerHTML = '';
+    matchState.items = [];
+    matchState.connections = [];
+    matchState.pending = null;
+    clearMatchLines();
+
+    // 左右で並び順を独立にシャッフル (同じ高さ同士が正解にならないように)
+    shuffleArray(chunk).forEach((card) => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'match-word';
+      el.textContent = card.japanese_label;
+      wordsEl.appendChild(el);
+      addMatchItem(card, 'word', el);
+    });
+    shuffleArray(chunk).forEach((card) => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'match-pic';
+      const img = document.createElement('img');
+      img.src = `images/${card.category}/${card.id}.png`;
+      img.alt = '';
+      el.appendChild(img);
+      picsEl.appendChild(el);
+      addMatchItem(card, 'pic', el);
+    });
+
+    sizeMatchCards();
+  }
+
+  function addMatchItem(card, side, el) {
+    const item = { card, side, el, done: false };
+    matchState.items.push(item);
+
+    el.addEventListener('pointerdown', (e) => {
+      if (item.done) return;
+      e.preventDefault();
+      try { el.setPointerCapture(e.pointerId); } catch (_) { /* noop */ }
+    });
+
+    el.addEventListener('pointermove', (e) => {
+      if (item.done) return;
+      if (e.buttons === 0) return;
+      drawDragLine(item, e.clientX, e.clientY);
+    });
+
+    el.addEventListener('pointerup', (e) => {
+      removeDragLine();
+      if (item.done) return;
+      const target = matchItemFromPoint(e.clientX, e.clientY);
+      if (target && target !== item && target.side !== item.side && !target.done) {
+        // ドラッグで反対側のアイテムに到達 / タップ選択からの2タップ目
+        attemptMatch(item, target);
+      } else if (target === item) {
+        // 自分の上で離した = タップ。選択→反対側タップでつなぐ
+        if (matchState.pending && matchState.pending.side !== item.side) {
+          attemptMatch(matchState.pending, item);
+        } else {
+          setMatchPending(item === matchState.pending ? null : item);
+        }
+      }
+    });
+  }
+
+  function setMatchPending(item) {
+    matchState.pending = item;
+    matchState.items.forEach((it) => {
+      it.el.classList.toggle('is-selected', it === item);
+    });
+  }
+
+  function attemptMatch(a, b) {
+    const word = a.side === 'word' ? a : b;
+    const pic = a.side === 'pic' ? a : b;
+    if (word.card.id === pic.card.id) {
+      word.done = pic.done = true;
+      word.el.classList.add('is-done');
+      pic.el.classList.add('is-done');
+      setMatchPending(null);
+      matchState.connections.push({ wordEl: word.el, picEl: pic.el });
+      redrawMatchLines();
+      speak(word.card);
+      if (matchState.items.every((it) => it.done)) {
+        state.answerShown = true;
+        $('#btn-next').textContent =
+          state.index === state.matchChunks.length - 1 ? '終了' : '次へ';
+        $('#btn-next').hidden = false;
+      }
+    } else {
+      // 不正解: 両方を一瞬赤くして選択解除
+      setMatchPending(null);
+      [a.el, b.el].forEach((el) => {
+        el.classList.remove('is-wrong');
+        void el.offsetWidth; // アニメーション再発火
+        el.classList.add('is-wrong');
+        setTimeout(() => el.classList.remove('is-wrong'), 500);
+      });
+    }
+  }
+
+  function matchItemFromPoint(x, y) {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return null;
+    return matchState.items.find((it) => it.el === el || it.el.contains(el)) || null;
+  }
+
+  // ---- 線の描画 (SVGオーバーレイ) ----
+  function matchAnchor(item) {
+    const area = $('#match-area').getBoundingClientRect();
+    const r = item.el.getBoundingClientRect();
+    return {
+      x: (item.side === 'word' ? r.right : r.left) - area.left,
+      y: r.top + r.height / 2 - area.top,
+    };
+  }
+
+  function svgLine(x1, y1, x2, y2, cls) {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1);
+    line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2);
+    line.setAttribute('y2', y2);
+    line.setAttribute('class', cls);
+    return line;
+  }
+
+  function clearMatchLines() {
+    $('#match-lines').innerHTML = '';
+  }
+
+  function redrawMatchLines() {
+    clearMatchLines();
+    const svg = $('#match-lines');
+    for (const conn of matchState.connections) {
+      const w = matchAnchor({ el: conn.wordEl, side: 'word' });
+      const p = matchAnchor({ el: conn.picEl, side: 'pic' });
+      svg.appendChild(svgLine(w.x, w.y, p.x, p.y, 'match-line-done'));
+    }
+  }
+
+  let dragLineEl = null;
+  function drawDragLine(item, clientX, clientY) {
+    const area = $('#match-area').getBoundingClientRect();
+    const from = matchAnchor(item);
+    if (!dragLineEl) {
+      dragLineEl = svgLine(from.x, from.y, clientX - area.left, clientY - area.top, 'match-line-drag');
+      $('#match-lines').appendChild(dragLineEl);
+    } else {
+      dragLineEl.setAttribute('x1', from.x);
+      dragLineEl.setAttribute('y1', from.y);
+      dragLineEl.setAttribute('x2', clientX - area.left);
+      dragLineEl.setAttribute('y2', clientY - area.top);
+    }
+  }
+
+  function removeDragLine() {
+    if (dragLineEl) {
+      dragLineEl.remove();
+      dragLineEl = null;
+    }
+  }
+
+  // 絵カードの1辺を「列の高さ / 組数」に収まるように計算する
+  function sizeMatchCards() {
+    if ($('#match-area').hidden) return;
+    const picsEl = $('#match-pics');
+    const n = picsEl.children.length;
+    if (n === 0) return;
+    const gap = 12;
+    const colH = picsEl.clientHeight;
+    const colW = picsEl.clientWidth;
+    const size = Math.max(64, Math.floor(Math.min((colH - gap * (n - 1)) / n, colW, 180)));
+    $('#match-area').style.setProperty('--match-card-size', `${size}px`);
+    redrawMatchLines();
+  }
+  window.addEventListener('resize', sizeMatchCards);
+
   // 拗音(ゃゅょ)・促音(っ)を伴うモーラを1ユニットとして文字列を分割する
   function getCharUnits(label) {
     if (!label) return [];
@@ -476,12 +696,16 @@
   const preloadedSrcs = new Set();
   function preloadUpcomingImages() {
     for (let i = 1; i <= 2; i++) {
-      const next = state.queue[state.index + i];
+      const next = state.mode === 'matching'
+        ? (state.matchChunks[state.index + i] || [])[0]
+        : state.queue[state.index + i];
       if (!next) break;
-      // 選択モードは次問の選択肢すべて、呼称モードは出題カードのみ
+      // 選択モードは次問の選択肢すべて、線つなぎは次画面の組すべて、呼称は出題カードのみ
       const upcoming = state.mode === 'select'
         ? (state.choiceSets[state.index + i] || [])
-        : [next];
+        : state.mode === 'matching'
+          ? state.matchChunks[state.index + i]
+          : [next];
       for (const c of upcoming) {
         const imgSrc = `images/${c.category}/${c.id}.png`;
         if (!preloadedSrcs.has(imgSrc)) {
@@ -520,7 +744,8 @@
   }
 
   function nextCard() {
-    if (state.index >= state.queue.length - 1) {
+    const total = state.mode === 'matching' ? state.matchChunks.length : state.queue.length;
+    if (state.index >= total - 1) {
       endQuiz();
       return;
     }
@@ -530,7 +755,8 @@
 
   function endQuiz() {
     stopSpeak();
-    $('#end-count').textContent = state.queue.length;
+    const total = state.mode === 'matching' ? state.matchChunks.length : state.queue.length;
+    $('#end-count').textContent = total;
     showScreen('screen-end');
   }
 
