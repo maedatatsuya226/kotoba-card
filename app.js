@@ -23,6 +23,9 @@
     hintShown: false,
   };
 
+  // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
+  const APP_VERSION = 'v18';
+
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
   const PRESETS = {
@@ -893,6 +896,7 @@
         'データの読み込みに失敗しました。<br /><small>' + err.message + '</small></div>';
       return;
     }
+    $('#app-version').textContent = APP_VERSION;
     renderCategoryList();
     bindCategoryActions();
     bindFamiliaritySliders();
