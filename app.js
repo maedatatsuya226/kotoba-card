@@ -8,7 +8,12 @@
     // 親密度ごとの出題問題数 (合計が総問題数)
     familiarityCounts: { high: 5, mid: 3, low: 2 },
     shuffle: true,
+    // 課題の種類: 'naming' = 呼称(絵→ことば) / 'select' = 選択(ことば→絵)
+    mode: 'naming',
+    choiceCount: 3,
     queue: [],
+    // 選択モード: 出題ごとの選択肢カード配列 (queue と同じ並び)
+    choiceSets: [],
     index: 0,
     answerShown: false,
     hintShown: false,
@@ -187,6 +192,27 @@
     });
   }
 
+  function bindModeButtons() {
+    $$('.mode-select .mode-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.mode = btn.dataset.mode;
+        $$('.mode-select .mode-btn').forEach((b) => {
+          b.classList.toggle('is-selected', b === btn);
+        });
+        $('#choice-count-row').hidden = state.mode !== 'select';
+      });
+    });
+
+    $$('[data-choice-count]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.choiceCount = parseInt(btn.dataset.choiceCount, 10);
+        $$('[data-choice-count]').forEach((b) => {
+          b.classList.toggle('is-selected', b === btn);
+        });
+      });
+    });
+  }
+
   // 選択中カテゴリ内で親密度別に利用可能なカード数を返す
   function getAvailableByFamiliarity() {
     const result = { high: 0, mid: 0, low: 0 };
@@ -284,29 +310,96 @@
     state.answerShown = false;
     preloadedSrcs.clear();
 
+    // 選択モード: 各問題の選択肢(正解+ディストラクタ)を先に決めておく
+    // (先読みで次問の画像を確実にプリフェッチするため)
+    state.choiceSets = state.mode === 'select'
+      ? state.queue.map((card) => buildChoices(card))
+      : [];
+
     $('#progress-total').textContent = state.queue.length;
     showScreen('screen-quiz');
     renderCurrentCard();
+  }
+
+  // 選択モードの選択肢を組み立てる。ディストラクタは選択中カテゴリ全体から
+  // 無作為抽出し、足りなければ全カードから補充する
+  function buildChoices(target) {
+    const wanted = state.choiceCount - 1;
+    const inScope = state.cards.filter(
+      (c) => c.id !== target.id && state.selectedCategories.has(c.category)
+    );
+    let distractors = shuffleArray(inScope).slice(0, wanted);
+    if (distractors.length < wanted) {
+      const used = new Set([target.id, ...distractors.map((c) => c.id)]);
+      const rest = shuffleArray(state.cards.filter((c) => !used.has(c.id)));
+      distractors = distractors.concat(rest.slice(0, wanted - distractors.length));
+    }
+    return shuffleArray([target, ...distractors]);
   }
 
   function renderCurrentCard() {
     const card = state.queue[state.index];
     $('#progress-current').textContent = state.index + 1;
 
-    const img = $('#card-image');
-    img.src = `images/${card.category}/${card.id}.png`;
-    img.alt = card.japanese_label;
-
+    const isSelect = state.mode === 'select';
+    $('#card-frame').hidden = isSelect;
+    $('#select-area').hidden = !isSelect;
     $('#answer-area').hidden = true;
     $('#answer-label').textContent = '';
     $('#answer-label').classList.remove('is-hint');
-    $('#btn-hint').hidden = false;
-    $('#btn-show-answer').hidden = false;
+    $('#btn-hint').hidden = isSelect;
+    $('#btn-show-answer').hidden = isSelect;
     $('#btn-next').hidden = true;
     state.answerShown = false;
     state.hintShown = false;
 
+    if (isSelect) {
+      renderChoiceQuestion(card);
+    } else {
+      const img = $('#card-image');
+      img.src = `images/${card.category}/${card.id}.png`;
+      img.alt = card.japanese_label;
+    }
+
     preloadUpcomingImages();
+  }
+
+  // 選択モード: お題のことばを表示し、絵カードをタップで選ばせる
+  function renderChoiceQuestion(target) {
+    $('#select-prompt').textContent = target.japanese_label;
+
+    const grid = $('#choice-grid');
+    grid.innerHTML = '';
+    const choices = state.choiceSets[state.index] || [target];
+    grid.dataset.count = choices.length;
+    grid.classList.remove('is-answered');
+
+    choices.forEach((choice) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'choice-card';
+      const img = document.createElement('img');
+      img.src = `images/${choice.category}/${choice.id}.png`;
+      img.alt = '';
+      btn.appendChild(img);
+
+      btn.addEventListener('click', () => {
+        if (state.answerShown || btn.classList.contains('is-wrong')) return;
+        if (choice.id === target.id) {
+          btn.classList.add('is-correct');
+          grid.classList.add('is-answered');
+          state.answerShown = true;
+          speak(target);
+          $('#btn-next').textContent =
+            state.index === state.queue.length - 1 ? '終了' : '次へ';
+          $('#btn-next').hidden = false;
+        } else {
+          btn.classList.add('is-wrong');
+        }
+      });
+
+      grid.appendChild(btn);
+    });
   }
 
   // 拗音(ゃゅょ)・促音(っ)を伴うモーラを1ユニットとして文字列を分割する
@@ -367,11 +460,17 @@
     for (let i = 1; i <= 2; i++) {
       const next = state.queue[state.index + i];
       if (!next) break;
-      const imgSrc = `images/${next.category}/${next.id}.png`;
-      if (!preloadedSrcs.has(imgSrc)) {
-        preloadedSrcs.add(imgSrc);
-        const img = new Image();
-        img.src = imgSrc;
+      // 選択モードは次問の選択肢すべて、呼称モードは出題カードのみ
+      const upcoming = state.mode === 'select'
+        ? (state.choiceSets[state.index + i] || [])
+        : [next];
+      for (const c of upcoming) {
+        const imgSrc = `images/${c.category}/${c.id}.png`;
+        if (!preloadedSrcs.has(imgSrc)) {
+          preloadedSrcs.add(imgSrc);
+          const img = new Image();
+          img.src = imgSrc;
+        }
       }
       const audioSrc = audioUrl(next);
       if (!preloadedSrcs.has(audioSrc)) {
@@ -556,6 +655,7 @@
     bindTotalSlider();
     bindFamiliarityPresets();
     bindShuffleToggle();
+    bindModeButtons();
     bindNavigation();
     updateSummary();
   }

@@ -49,6 +49,28 @@
 
       <div class="setup-body">
         <section class="setup-section">
+          <h3 class="setup-section-title">課題の種類</h3>
+          <div class="mode-select">
+            <button class="mode-btn is-selected" type="button" data-mode="naming">
+              <span class="mode-btn-title">呼称</span>
+              <span class="mode-btn-desc">絵を見て ことばを言う</span>
+            </button>
+            <button class="mode-btn" type="button" data-mode="select">
+              <span class="mode-btn-title">選択</span>
+              <span class="mode-btn-desc">ことばに合う絵を選ぶ</span>
+            </button>
+          </div>
+          <div id="choice-count-row" class="choice-count-row" hidden>
+            <span class="choice-count-label">選択肢の数</span>
+            <div class="choice-count-btns">
+              <button class="btn btn-mini" type="button" data-choice-count="2">2枚</button>
+              <button class="btn btn-mini is-selected" type="button" data-choice-count="3">3枚</button>
+              <button class="btn btn-mini" type="button" data-choice-count="4">4枚</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="setup-section">
           <h3 class="setup-section-title">カテゴリ <span class="hint">(複数選択可)</span></h3>
           <div class="cat-actions">
             <button class="btn btn-mini" type="button" data-cat-action="all">すべて選択</button>
@@ -150,7 +172,7 @@
       </header>
 
       <div class="quiz-body">
-        <div class="card-frame">
+        <div id="card-frame" class="card-frame">
           <img id="card-image" alt="" />
         </div>
 
@@ -159,6 +181,12 @@
           <button id="btn-replay" class="btn btn-secondary" type="button">
             <span class="btn-icon-inline">🔊</span> もう一度再生
           </button>
+        </div>
+
+        <!-- 選択モード: ことばを提示し、合う絵カードを選んでもらう -->
+        <div id="select-area" class="select-area" hidden>
+          <div id="select-prompt" class="select-prompt"></div>
+          <div id="choice-grid" class="choice-grid"></div>
         </div>
       </div>
 
