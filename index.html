@@ -61,12 +61,14 @@
             </button>
           </div>
           <div id="choice-count-row" class="choice-count-row" hidden>
-            <span class="choice-count-label">選択肢の数</span>
-            <div class="choice-count-btns">
-              <button class="btn btn-mini" type="button" data-choice-count="2">2枚</button>
-              <button class="btn btn-mini is-selected" type="button" data-choice-count="3">3枚</button>
-              <button class="btn btn-mini" type="button" data-choice-count="4">4枚</button>
+            <div class="choice-count-header">
+              <span class="choice-count-label">選択肢の数</span>
+              <span class="choice-count-readout">
+                <output id="choice-count-value" class="choice-count-value">3</output>
+                <span class="choice-count-unit">枚</span>
+              </span>
             </div>
+            <input id="choice-count-slider" type="range" min="1" max="12" value="3" />
           </div>
         </section>
 

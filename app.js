@@ -203,13 +203,9 @@
       });
     });
 
-    $$('[data-choice-count]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        state.choiceCount = parseInt(btn.dataset.choiceCount, 10);
-        $$('[data-choice-count]').forEach((b) => {
-          b.classList.toggle('is-selected', b === btn);
-        });
-      });
+    $('#choice-count-slider').addEventListener('input', (e) => {
+      state.choiceCount = parseInt(e.target.value, 10);
+      $('#choice-count-value').textContent = state.choiceCount;
     });
   }
 
@@ -371,7 +367,10 @@
     const grid = $('#choice-grid');
     grid.innerHTML = '';
     const choices = state.choiceSets[state.index] || [target];
-    grid.dataset.count = choices.length;
+    // 枚数に応じて列数を決める (4枚は2×2、9枚まで3列、それ以上は4列)
+    const n = choices.length;
+    const cols = n === 1 ? 1 : n === 2 ? 2 : n === 4 ? 2 : n <= 9 ? 3 : 4;
+    grid.style.setProperty('--cols', cols);
     grid.classList.remove('is-answered');
 
     choices.forEach((choice) => {

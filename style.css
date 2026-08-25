@@ -309,14 +309,17 @@ body {
 .mode-btn:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
 
 .choice-count-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   margin-top: 14px;
-  flex-wrap: wrap;
+}
+.choice-count-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
 }
 .choice-count-label { font-size: 14px; font-weight: 600; color: #334155; }
-.choice-count-btns { display: flex; gap: 8px; }
+.choice-count-value { font-size: 20px; font-weight: 700; color: var(--color-primary); }
+.choice-count-unit { font-size: 12px; color: var(--color-muted); margin-left: 2px; }
 
 /* ===== Slider (共通 range input スタイル) ===== */
 .setup-body input[type="range"] {
@@ -605,11 +608,11 @@ body {
   display: grid;
   gap: 14px;
   width: 100%;
-  max-width: 700px;
+  /* 列数は JS が枚数から決めて --cols にセットする。
+     1カードあたり最大230pxとしてグリッド全体の幅を列数に比例させる */
+  grid-template-columns: repeat(var(--cols, 3), 1fr);
+  max-width: calc(var(--cols, 3) * 230px + (var(--cols, 3) - 1) * 14px);
 }
-.choice-grid[data-count="2"] { grid-template-columns: repeat(2, 1fr); max-width: 620px; }
-.choice-grid[data-count="3"] { grid-template-columns: repeat(3, 1fr); }
-.choice-grid[data-count="4"] { grid-template-columns: repeat(2, 1fr); max-width: 560px; }
 
 .choice-card {
   appearance: none;
