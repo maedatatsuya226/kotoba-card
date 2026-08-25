@@ -13,6 +13,8 @@
     mode: 'naming',
     choiceCount: 3,
     pairCount: 3,
+    // 表示する文字の種類: 'default'(標準表記) | 'hiragana' | 'katakana' | 'kanji'
+    script: 'default',
     queue: [],
     // 選択モード: 出題ごとの選択肢カード配列 (queue と同じ並び)
     choiceSets: [],
@@ -24,7 +26,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v20';
+  const APP_VERSION = 'v21';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -37,6 +39,24 @@
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  // ---- 表示文字種 ----
+  function toKatakana(hira) {
+    return hira.replace(/[ぁ-ゖ]/g, (c) =>
+      String.fromCharCode(c.charCodeAt(0) + 0x60)
+    );
+  }
+
+  // 設定「文字の種類」に応じた表示用ラベルを返す。
+  // 漢字表記のない語 (外来語等) は標準表記のまま
+  function displayLabel(card) {
+    switch (state.script) {
+      case 'hiragana': return card.reading;
+      case 'katakana': return toKatakana(card.reading);
+      case 'kanji':    return card.kanji_label || card.japanese_label;
+      default:         return card.japanese_label;
+    }
+  }
 
   // ---- Screen routing ----
   function showScreen(id) {
@@ -220,6 +240,15 @@
       state.pairCount = parseInt(e.target.value, 10);
       $('#pair-count-value').textContent = state.pairCount;
     });
+
+    $$('.script-select [data-script]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.script = btn.dataset.script;
+        $$('.script-select [data-script]').forEach((b) => {
+          b.classList.toggle('is-selected', b === btn);
+        });
+      });
+    });
   }
 
   // 選択中カテゴリ内で親密度別に利用可能なカード数を返す
@@ -329,12 +358,13 @@
     // 1画面の組数は常に設定どおりにするため、組数で割り切れない端数の語は
     // 出題しない (例: 10語・3組 → 9語で3画面。語数が組数未満ならその語数で1画面)
     if (state.mode === 'matching') {
-      // 同名ラベル (例: はな=花/鼻) が同一画面に並ぶと区別できないため、
-      // 先に重複ラベルを除いてから組数の倍数に切り詰める
+      // 表示上同じ文字になる語 (例: ひらがな表示の はな=花/鼻) が同一セッションに
+      // 並ぶと区別できないため、先に重複を除いてから組数の倍数に切り詰める
       const seenLabels = new Set();
       state.queue = state.queue.filter((c) => {
-        if (seenLabels.has(c.japanese_label)) return false;
-        seenLabels.add(c.japanese_label);
+        const label = displayLabel(c);
+        if (seenLabels.has(label)) return false;
+        seenLabels.add(label);
         return true;
       });
       const usable = state.queue.length >= state.pairCount
@@ -359,17 +389,19 @@
   // 無作為抽出し、足りなければ全カードから補充する
   function buildChoices(target) {
     const wanted = state.choiceCount - 1;
-    // 同名ラベルのカード (例: はな=花/鼻) が並ぶと区別できないため除外する
+    // 表示上同じ文字になるカード (例: ひらがな表示の はな=花/鼻) が並ぶと
+    // 区別できないため除外する (漢字表示なら別の文字になるので出題可)
+    const targetLabel = displayLabel(target);
     const inScope = state.cards.filter(
       (c) => c.id !== target.id &&
-        c.japanese_label !== target.japanese_label &&
+        displayLabel(c) !== targetLabel &&
         state.selectedCategories.has(c.category)
     );
     let distractors = shuffleArray(inScope).slice(0, wanted);
     if (distractors.length < wanted) {
       const used = new Set([target.id, ...distractors.map((c) => c.id)]);
       const rest = shuffleArray(state.cards.filter(
-        (c) => !used.has(c.id) && c.japanese_label !== target.japanese_label
+        (c) => !used.has(c.id) && displayLabel(c) !== targetLabel
       ));
       distractors = distractors.concat(rest.slice(0, wanted - distractors.length));
     }
@@ -416,7 +448,7 @@
 
   // 選択モード: お題のことばを表示し、絵カードをタップで選ばせる
   function renderChoiceQuestion(target) {
-    $('#select-prompt').textContent = target.japanese_label;
+    $('#select-prompt').textContent = displayLabel(target);
 
     const grid = $('#choice-grid');
     grid.innerHTML = '';
@@ -498,7 +530,7 @@
       const el = document.createElement('button');
       el.type = 'button';
       el.className = 'match-word';
-      el.textContent = card.japanese_label;
+      el.textContent = displayLabel(card);
       wordsEl.appendChild(el);
       addMatchItem(card, 'word', el);
     });
@@ -685,7 +717,7 @@
   function showHint() {
     if (state.answerShown || state.hintShown) return;
     const card = state.queue[state.index];
-    const units = getCharUnits(card.japanese_label);
+    const units = getCharUnits(displayLabel(card));
     if (units.length === 0) return;
 
     const labelEl = $('#answer-label');
@@ -749,7 +781,7 @@
   function showAnswer() {
     if (state.answerShown) return;
     const card = state.queue[state.index];
-    $('#answer-label').textContent = card.japanese_label;
+    $('#answer-label').textContent = displayLabel(card);
     $('#answer-label').classList.remove('is-hint');
     $('#answer-area').hidden = false;
     $('#btn-replay').hidden = false;

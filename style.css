@@ -316,6 +316,18 @@ body {
 .choice-count-row {
   margin-top: 14px;
 }
+
+.script-select {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.script-select .btn-mini {
+  font-size: 15px;
+  padding: 10px 18px;
+  min-height: 44px;
+}
+.script-note { margin: 10px 0 0; }
 .choice-count-header {
   display: flex;
   align-items: baseline;
