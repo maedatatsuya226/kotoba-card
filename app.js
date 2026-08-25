@@ -337,26 +337,21 @@
     labelEl.textContent = '';
     labelEl.classList.add('is-hint');
 
-    units.forEach((unit, idx) => {
+    units.forEach((unit) => {
       const span = document.createElement('span');
       span.className = 'hint-char';
-      if (idx === 0) {
+      span.textContent = '〇';
+      span.classList.add('masked');
+      span.setAttribute('role', 'button');
+      span.setAttribute('aria-label', 'タップして開く');
+      span.addEventListener('click', () => {
+        if (!span.classList.contains('masked')) return;
         span.textContent = unit;
+        span.classList.remove('masked');
         span.classList.add('revealed');
-      } else {
-        span.textContent = '〇';
-        span.classList.add('masked');
-        span.setAttribute('role', 'button');
-        span.setAttribute('aria-label', 'タップして開く');
-        span.addEventListener('click', () => {
-          if (!span.classList.contains('masked')) return;
-          span.textContent = unit;
-          span.classList.remove('masked');
-          span.classList.add('revealed');
-          span.removeAttribute('role');
-          span.removeAttribute('aria-label');
-        });
-      }
+        span.removeAttribute('role');
+        span.removeAttribute('aria-label');
+      });
       labelEl.appendChild(span);
     });
 
