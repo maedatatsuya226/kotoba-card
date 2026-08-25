@@ -647,12 +647,12 @@ body {
   background: white;
   border: 3px solid var(--color-border);
   border-radius: var(--radius-lg);
-  /* セル内に収まる最大の正方形になる (幅・高さの小さい方に合わせて縮む) */
+  /* サイズは JS (sizeChoiceCards) がセルに収まる正方形を計算して
+     --card-size にセットする。CSSの自動計算 (aspect-ratio + max制約) は
+     iOS Safari で0サイズに潰れるため使わない */
+  width: var(--card-size, 100%);
+  height: var(--card-size, auto);
   aspect-ratio: 1 / 1;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -400,7 +400,25 @@
 
       grid.appendChild(btn);
     });
+
+    sizeChoiceCards();
   }
+
+  // グリッドの実サイズから、セルに収まる正方形のカードサイズを計算して
+  // --card-size にセットする (CSS任せの自動縮小は iOS Safari で潰れるため)
+  function sizeChoiceCards() {
+    if ($('#select-area').hidden) return;
+    const grid = $('#choice-grid');
+    if (!grid.children.length) return;
+    const cols = parseInt(grid.style.getPropertyValue('--cols'), 10) || 1;
+    const rows = parseInt(grid.style.getPropertyValue('--rows'), 10) || 1;
+    const gap = 14;
+    const cellW = (grid.clientWidth - gap * (cols - 1)) / cols;
+    const cellH = (grid.clientHeight - gap * (rows - 1)) / rows;
+    const size = Math.max(72, Math.floor(Math.min(cellW, cellH)));
+    grid.style.setProperty('--card-size', `${size}px`);
+  }
+  window.addEventListener('resize', sizeChoiceCards);
 
   // 拗音(ゃゅょ)・促音(っ)を伴うモーラを1ユニットとして文字列を分割する
   function getCharUnits(label) {
