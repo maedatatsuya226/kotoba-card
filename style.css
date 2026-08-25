@@ -749,14 +749,14 @@ body {
   cursor: pointer;
   font-family: inherit;
   /* 横画面 (vhが小さい) ではフォントも比例して縮み、ボタン幅が広がりすぎない */
-  font-size: clamp(20px, 3.6vh, 30px);
+  font-size: clamp(22px, 4vh, 32px);
   font-weight: 700;
   color: #0f172a;
   letter-spacing: 0.03em;
   background: white;
   border: 3px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 8px 16px;
+  padding: 9px 18px;
   box-shadow: var(--shadow-sm);
   white-space: nowrap;
   touch-action: none;

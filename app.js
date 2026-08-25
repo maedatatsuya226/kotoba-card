@@ -24,7 +24,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v18';
+  const APP_VERSION = 'v19';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -326,22 +326,31 @@
       : [];
 
     // 線つなぎモード: queue を組数ごとの画面に区切る。
-    // 最後の画面が1組だけになる場合は前の画面に合流させる
+    // 1画面の組数は常に設定どおりにするため、組数で割り切れない端数の語は
+    // 出題しない (例: 10語・3組 → 9語で3画面。語数が組数未満ならその語数で1画面)
     if (state.mode === 'matching') {
+      // 同名ラベル (例: はな=花/鼻) が同一画面に並ぶと区別できないため、
+      // 先に重複ラベルを除いてから組数の倍数に切り詰める
+      const seenLabels = new Set();
+      state.queue = state.queue.filter((c) => {
+        if (seenLabels.has(c.japanese_label)) return false;
+        seenLabels.add(c.japanese_label);
+        return true;
+      });
+      const usable = state.queue.length >= state.pairCount
+        ? Math.floor(state.queue.length / state.pairCount) * state.pairCount
+        : state.queue.length;
+      state.queue = state.queue.slice(0, usable);
       const chunks = [];
       for (let i = 0; i < state.queue.length; i += state.pairCount) {
         chunks.push(state.queue.slice(i, i + state.pairCount));
-      }
-      if (chunks.length > 1 && chunks[chunks.length - 1].length === 1) {
-        chunks[chunks.length - 2].push(...chunks.pop());
       }
       state.matchChunks = chunks;
     } else {
       state.matchChunks = [];
     }
 
-    $('#progress-total').textContent =
-      state.mode === 'matching' ? state.matchChunks.length : state.queue.length;
+    $('#progress-total').textContent = state.queue.length;
     showScreen('screen-quiz');
     renderCurrentCard();
   }
@@ -350,23 +359,35 @@
   // 無作為抽出し、足りなければ全カードから補充する
   function buildChoices(target) {
     const wanted = state.choiceCount - 1;
+    // 同名ラベルのカード (例: はな=花/鼻) が並ぶと区別できないため除外する
     const inScope = state.cards.filter(
-      (c) => c.id !== target.id && state.selectedCategories.has(c.category)
+      (c) => c.id !== target.id &&
+        c.japanese_label !== target.japanese_label &&
+        state.selectedCategories.has(c.category)
     );
     let distractors = shuffleArray(inScope).slice(0, wanted);
     if (distractors.length < wanted) {
       const used = new Set([target.id, ...distractors.map((c) => c.id)]);
-      const rest = shuffleArray(state.cards.filter((c) => !used.has(c.id)));
+      const rest = shuffleArray(state.cards.filter(
+        (c) => !used.has(c.id) && c.japanese_label !== target.japanese_label
+      ));
       distractors = distractors.concat(rest.slice(0, wanted - distractors.length));
     }
     return shuffleArray([target, ...distractors]);
   }
 
   function renderCurrentCard() {
-    $('#progress-current').textContent = state.index + 1;
-
     const isSelect = state.mode === 'select';
     const isMatch = state.mode === 'matching';
+
+    // 線つなぎは1画面に複数語出すため「4〜6」のように語の範囲で表示する
+    if (isMatch) {
+      const start = state.index * state.pairCount + 1;
+      const end = start + state.matchChunks[state.index].length - 1;
+      $('#progress-current').textContent = start === end ? start : `${start}〜${end}`;
+    } else {
+      $('#progress-current').textContent = state.index + 1;
+    }
     $('#card-frame').hidden = isSelect || isMatch;
     $('#select-area').hidden = !isSelect;
     $('#match-area').hidden = !isMatch;
@@ -758,8 +779,7 @@
 
   function endQuiz() {
     stopSpeak();
-    const total = state.mode === 'matching' ? state.matchChunks.length : state.queue.length;
-    $('#end-count').textContent = total;
+    $('#end-count').textContent = state.queue.length;
     showScreen('screen-end');
   }
 
