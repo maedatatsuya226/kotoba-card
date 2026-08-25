@@ -721,9 +721,9 @@ body {
   min-height: 0;
   display: flex;
   justify-content: space-between;
-  gap: 40px;
+  gap: 60px;
   width: 100%;
-  max-width: 720px;
+  max-width: 840px;
   margin: 0 auto;
 }
 .match-words,
@@ -731,11 +731,12 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-around;
-  align-items: stretch;
   gap: 12px;
   min-height: 0;
 }
-.match-words { flex: 1; min-width: 0; }
+/* ことばは文字幅ぶんだけ左に寄せ、絵は右端に寄せて、
+   間に線を引くスペースを最大限確保する */
+.match-words { flex: 0 1 auto; align-items: flex-start; min-width: 0; }
 .match-pics { flex: 0 0 auto; align-items: flex-end; }
 
 .match-word {
