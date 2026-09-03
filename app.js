@@ -26,7 +26,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v22';
+  const APP_VERSION = 'v23';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -932,6 +932,15 @@
     $('#btn-go-setup').addEventListener('click', () => {
       warmUpSpeech();
       showScreen('screen-setup');
+    });
+    // スタート画面の課題カード: その課題を選んだ状態で設定画面へ
+    $$('[data-start-mode]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const modeBtn = $(`.mode-select .mode-btn[data-mode="${btn.dataset.startMode}"]`);
+        if (modeBtn) modeBtn.click();
+        warmUpSpeech();
+        showScreen('screen-setup');
+      });
     });
     $('#btn-setup-back').addEventListener('click', () => showScreen('screen-start'));
     $('#btn-start').addEventListener('click', () => {

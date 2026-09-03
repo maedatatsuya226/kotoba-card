@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="description" content="言語聴覚士のための絵カード呼称トレーニングアプリ" />
+  <meta name="description" content="言語聴覚士のための絵カードトレーニングアプリ（呼称・選択・線つなぎ）" />
   <meta name="theme-color" content="#2563eb" />
   <!-- iOS / iPad ホーム画面追加対応 -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="ST絵カード" />
+  <meta name="apple-mobile-web-app-title" content="ことばカード" />
   <meta name="format-detection" content="telephone=no" />
   <link rel="icon" type="image/png" href="images/app/kotoba-card-icon.png" />
   <link rel="apple-touch-icon" href="images/app/kotoba-card-icon.png" />
   <link rel="manifest" href="manifest.json" />
-  <title>ST絵カード呼称トレーニング</title>
+  <title>ことばカード — ST絵カードトレーニング</title>
   <!--
     Critical CSS: style.css の読み込みに失敗しても最低限「1画面ずつ表示」
     「hidden要素は非表示」だけは効かせる保険 (SW更新中や iOS Safari 特有の
@@ -33,8 +33,29 @@
     <!-- スタート画面 -->
     <section id="screen-start" class="screen is-active">
       <div class="start-inner">
-        <h1 class="app-title">ST絵カード<br />呼称トレーニング</h1>
-        <p class="app-subtitle">言語聴覚療法用 呼称訓練アプリ</p>
+        <img class="start-icon" src="images/app/kotoba-card-icon.png" alt="" width="96" height="96" />
+        <h1 class="app-title">ことばカード</h1>
+        <p class="app-subtitle">言語聴覚療法用 絵カードトレーニング</p>
+
+        <!-- 課題をタップすると、その課題が選ばれた状態で設定画面へ -->
+        <div class="start-tasks">
+          <button class="start-task" type="button" data-start-mode="naming">
+            <span class="start-task-icon" aria-hidden="true">🗣️</span>
+            <span class="start-task-name">呼称</span>
+            <span class="start-task-desc">絵を見て<br />ことばを言う</span>
+          </button>
+          <button class="start-task" type="button" data-start-mode="select">
+            <span class="start-task-icon" aria-hidden="true">👆</span>
+            <span class="start-task-name">選択</span>
+            <span class="start-task-desc">ことばに合う<br />絵を選ぶ</span>
+          </button>
+          <button class="start-task" type="button" data-start-mode="matching">
+            <span class="start-task-icon" aria-hidden="true">✏️</span>
+            <span class="start-task-name">線つなぎ</span>
+            <span class="start-task-desc">ことばと絵を<br />線でつなぐ</span>
+          </button>
+        </div>
+
         <button id="btn-go-setup" class="btn btn-primary btn-large" type="button">はじめる</button>
         <p id="app-version" class="app-version"></p>
       </div>

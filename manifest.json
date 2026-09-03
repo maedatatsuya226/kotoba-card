@@ -1,7 +1,7 @@
 {
-  "name": "ST絵カード呼称トレーニング",
-  "short_name": "ST絵カード",
-  "description": "言語聴覚士のための絵カード呼称トレーニングアプリ",
+  "name": "ことばカード — ST絵カードトレーニング",
+  "short_name": "ことばカード",
+  "description": "言語聴覚士のための絵カードトレーニングアプリ（呼称・選択・線つなぎ）",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
