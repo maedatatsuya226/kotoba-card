@@ -86,6 +86,24 @@
               <span class="mode-btn-desc">ことばと絵を線でつなぐ</span>
             </button>
           </div>
+          <div id="time-limit-row" class="option-row">
+            <span class="option-row-label">制限時間 <span class="hint">(時間切れで答えを表示)</span></span>
+            <div class="option-btns">
+              <button class="btn btn-mini is-selected" type="button" data-time-limit="0">なし</button>
+              <button class="btn btn-mini" type="button" data-time-limit="5">5秒</button>
+              <button class="btn btn-mini" type="button" data-time-limit="10">10秒</button>
+              <button class="btn btn-mini" type="button" data-time-limit="15">15秒</button>
+              <button class="btn btn-mini" type="button" data-time-limit="20">20秒</button>
+            </div>
+          </div>
+          <div id="prompt-type-row" class="option-row" hidden>
+            <span class="option-row-label">お題の出し方</span>
+            <div class="option-btns">
+              <button class="btn btn-mini is-selected" type="button" data-prompt-type="text">文字</button>
+              <button class="btn btn-mini" type="button" data-prompt-type="audio">音声のみ <span class="hint">(聴理解)</span></button>
+              <button class="btn btn-mini" type="button" data-prompt-type="both">文字＋音声</button>
+            </div>
+          </div>
           <div id="choice-count-row" class="choice-count-row" hidden>
             <div class="choice-count-header">
               <span class="choice-count-label">選択肢の数</span>
@@ -220,6 +238,12 @@
         <div class="spacer"></div>
       </header>
 
+      <!-- 制限時間 (呼称モードで設定時のみ表示) -->
+      <div id="timer" class="timer" hidden>
+        <div class="timer-track"><div id="timer-fill" class="timer-fill"></div></div>
+        <span id="timer-text" class="timer-text"></span>
+      </div>
+
       <div class="quiz-body">
         <div id="card-frame" class="card-frame">
           <img id="card-image" alt="" />
@@ -230,11 +254,21 @@
           <button id="btn-replay" class="btn btn-secondary" type="button">
             <span class="btn-icon-inline">🔊</span> もう一度再生
           </button>
+          <!-- ST が呼称の可否を記録する (任意。終了画面の正答率に使う) -->
+          <div id="judge-row" class="judge-row" hidden>
+            <button id="btn-judge-ok" class="judge-btn judge-ok" type="button">○ 言えた</button>
+            <button id="btn-judge-ng" class="judge-btn judge-ng" type="button">× 言えなかった</button>
+          </div>
         </div>
 
         <!-- 選択モード: ことばを提示し、合う絵カードを選んでもらう -->
         <div id="select-area" class="select-area" hidden>
-          <div id="select-prompt" class="select-prompt"></div>
+          <div class="select-prompt-row">
+            <div id="select-prompt" class="select-prompt"></div>
+            <button id="btn-select-replay" class="btn btn-secondary select-replay" type="button" hidden>
+              <span class="btn-icon-inline">🔊</span> もう一度きく
+            </button>
+          </div>
           <div id="choice-grid" class="choice-grid"></div>
         </div>
 
@@ -263,6 +297,8 @@
         <div class="end-emoji" aria-hidden="true">🎉</div>
         <h2 class="end-title">お疲れさまでした</h2>
         <p class="end-sub"><span id="end-count">0</span>問完了しました</p>
+        <!-- 正答率 (セッション内のみ。保存はしない) -->
+        <div id="end-results" class="end-results" hidden></div>
         <div class="end-buttons">
           <button id="btn-again" class="btn btn-primary btn-large" type="button">もう一度</button>
           <button id="btn-home" class="btn btn-ghost btn-large" type="button">ホームに戻る</button>

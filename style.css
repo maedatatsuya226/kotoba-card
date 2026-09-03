@@ -361,6 +361,30 @@ body {
   margin-top: 14px;
 }
 
+/* 設定行 (制限時間 / お題の出し方 など、ボタン列の汎用スタイル) */
+.option-row {
+  margin-top: 14px;
+}
+.option-row-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 8px;
+}
+.option-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.option-btns .btn-mini {
+  font-size: 14px;
+  padding: 9px 16px;
+  min-height: 42px;
+}
+.option-btns .btn-mini .hint { font-size: 11px; margin-left: 2px; }
+.option-btns .btn-mini.is-selected .hint { color: #dbeafe; }
+
 .script-select {
   display: flex;
   gap: 8px;
@@ -652,6 +676,78 @@ body {
   100% { transform: scale(1); }
 }
 
+/* 制限時間バー: 静かに減っていく細いバー + 残り秒数 */
+.timer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px 0;
+}
+.timer-track {
+  flex: 1;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.timer-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+  transition: width 0.1s linear, background 0.3s ease;
+}
+.timer.is-ending .timer-fill { background: var(--color-warn); }
+.timer-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-muted);
+  min-width: 4.5em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.timer.is-ending .timer-text { color: var(--color-warn); }
+
+/* 呼称の可否記録 (○/×) */
+.judge-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+.judge-btn {
+  flex: 1;
+  appearance: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  min-height: 52px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-border);
+  background: white;
+  color: #334155;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.judge-ok.is-selected { background: #dcfce7; border-color: #16a34a; color: #15803d; }
+.judge-ng.is-selected { background: #fee2e2; border-color: #dc2626; color: #b91c1c; }
+
+/* 選択モード: お題行 (文字 / もう一度きく) */
+.select-prompt-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.select-replay {
+  min-height: 56px;
+  font-size: 18px;
+  padding: 12px 22px;
+  border-radius: var(--radius-lg);
+}
+
 .quiz-footer {
   display: flex;
   gap: 12px;
@@ -911,6 +1007,42 @@ body {
   gap: 12px;
   width: 100%;
   max-width: 320px;
+}
+
+/* 終了画面の結果 (正答率) */
+.end-results {
+  width: 100%;
+  max-width: 420px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+  margin-bottom: 8px;
+}
+.end-rate {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+}
+.end-rate-value {
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+}
+.end-rate-label { font-size: 15px; color: var(--color-muted); font-weight: 600; }
+.end-breakdown {
+  margin: 10px 0 0;
+  font-size: 15px;
+  color: #334155;
+  line-height: 1.7;
+}
+.end-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--color-muted);
 }
 
 /* ===== Tablet & desktop ===== */

@@ -15,6 +15,18 @@
     pairCount: 3,
     // 表示する文字の種類: 'default'(標準表記) | 'hiragana' | 'katakana' | 'kanji'
     script: 'default',
+    // 選択モードのお題の出し方: 'text' | 'audio'(聴理解) | 'both'
+    promptType: 'text',
+    // 呼称モードの制限時間 (秒)。0 = なし
+    timeLimit: 0,
+    // セッション内の記録 (終了画面の正答率用。保存はしない)
+    session: {
+      judgments: [],   // 呼称: index → true(○) / false(×) / undefined(未評価)
+      firstTry: [],    // 選択・線つなぎ: 問題(組)ごとに一発正解なら true
+      hintUsed: [],    // 呼称: index → ヒントを使ったら true
+      timedOut: [],    // 呼称: index → 時間切れなら true
+      wrongTaps: 0,    // 選択・線つなぎ: 誤答タップの総数
+    },
     queue: [],
     // 選択モード: 出題ごとの選択肢カード配列 (queue と同じ並び)
     choiceSets: [],
@@ -26,7 +38,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v23';
+  const APP_VERSION = 'v24';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -226,10 +238,25 @@
         $$('.mode-select .mode-btn').forEach((b) => {
           b.classList.toggle('is-selected', b === btn);
         });
+        $('#time-limit-row').hidden = state.mode !== 'naming';
+        $('#prompt-type-row').hidden = state.mode !== 'select';
         $('#choice-count-row').hidden = state.mode !== 'select';
         $('#pair-count-row').hidden = state.mode !== 'matching';
       });
     });
+
+    // 汎用: data-* 属性のボタン群を排他選択にして state に反映する
+    const bindOptionGroup = (attr, apply) => {
+      const btns = $$(`[${attr}]`);
+      btns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          apply(btn.getAttribute(attr));
+          btns.forEach((b) => b.classList.toggle('is-selected', b === btn));
+        });
+      });
+    };
+    bindOptionGroup('data-time-limit', (v) => { state.timeLimit = parseInt(v, 10) || 0; });
+    bindOptionGroup('data-prompt-type', (v) => { state.promptType = v; });
 
     $('#choice-count-slider').addEventListener('input', (e) => {
       state.choiceCount = parseInt(e.target.value, 10);
@@ -346,6 +373,7 @@
     state.queue = state.shuffle ? shuffleArray(picks) : picks;
     state.index = 0;
     state.answerShown = false;
+    state.session = { judgments: [], firstTry: [], hintUsed: [], timedOut: [], wrongTaps: 0 };
     preloadedSrcs.clear();
 
     // 選択モード: 各問題の選択肢(正解+ディストラクタ)を先に決めておく
@@ -390,19 +418,19 @@
   function buildChoices(target) {
     const wanted = state.choiceCount - 1;
     // 表示上同じ文字になるカード (例: ひらがな表示の はな=花/鼻) が並ぶと
-    // 区別できないため除外する (漢字表示なら別の文字になるので出題可)
+    // 区別できないため除外する (漢字表示なら別の文字になるので出題可)。
+    // 音声で出題する場合は読みが同じカードも同様に除外する
     const targetLabel = displayLabel(target);
+    const useAudio = state.promptType !== 'text';
+    const confusable = (c) =>
+      displayLabel(c) === targetLabel || (useAudio && c.reading === target.reading);
     const inScope = state.cards.filter(
-      (c) => c.id !== target.id &&
-        displayLabel(c) !== targetLabel &&
-        state.selectedCategories.has(c.category)
+      (c) => c.id !== target.id && !confusable(c) && state.selectedCategories.has(c.category)
     );
     let distractors = shuffleArray(inScope).slice(0, wanted);
     if (distractors.length < wanted) {
       const used = new Set([target.id, ...distractors.map((c) => c.id)]);
-      const rest = shuffleArray(state.cards.filter(
-        (c) => !used.has(c.id) && displayLabel(c) !== targetLabel
-      ));
+      const rest = shuffleArray(state.cards.filter((c) => !used.has(c.id) && !confusable(c)));
       distractors = distractors.concat(rest.slice(0, wanted - distractors.length));
     }
     return shuffleArray([target, ...distractors]);
@@ -442,6 +470,9 @@
     }
     state.answerShown = false;
     state.hintShown = false;
+    $('#judge-row').hidden = true;
+    stopTimer();
+    $('#timer').hidden = true; // 呼称で制限時間ありの時だけ startTimer() が表示する
 
     if (isMatch) {
       renderMatchQuestion(state.matchChunks[state.index]);
@@ -452,14 +483,59 @@
       const img = $('#card-image');
       img.src = `images/${card.category}/${card.id}.png`;
       img.alt = card.japanese_label;
+      startTimer();
     }
 
     preloadUpcomingImages();
   }
 
+  // ---- 制限時間 (呼称モード) ----
+  // 静かに減る細いバーと残り秒数を表示し、時間切れで答えを自動表示する
+  let timerId = null;
+  function startTimer() {
+    stopTimer();
+    const timerEl = $('#timer');
+    if (state.mode !== 'naming' || !state.timeLimit) {
+      timerEl.hidden = true;
+      return;
+    }
+    const total = state.timeLimit * 1000;
+    const endAt = Date.now() + total;
+    timerEl.hidden = false;
+    timerEl.classList.remove('is-ending');
+    const tick = () => {
+      const remain = Math.max(0, endAt - Date.now());
+      $('#timer-fill').style.width = `${(remain / total) * 100}%`;
+      $('#timer-text').textContent = `残り ${Math.ceil(remain / 1000)} 秒`;
+      timerEl.classList.toggle('is-ending', remain <= 3000);
+      if (remain <= 0) {
+        stopTimer();
+        state.session.timedOut[state.index] = true;
+        showAnswer();
+      }
+    };
+    tick();
+    timerId = setInterval(tick, 100);
+  }
+
+  function stopTimer() {
+    if (timerId !== null) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+  }
+
   // 選択モード: お題のことばを表示し、絵カードをタップで選ばせる
   function renderChoiceQuestion(target) {
-    $('#select-prompt').textContent = displayLabel(target);
+    // お題の出し方: 文字 / 音声のみ(聴理解: 文字は出さない) / 文字+音声
+    const useText = state.promptType !== 'audio';
+    const useAudio = state.promptType !== 'text';
+    const promptEl = $('#select-prompt');
+    promptEl.textContent = useText ? displayLabel(target) : '';
+    promptEl.hidden = !useText;
+    $('#btn-select-replay').hidden = !useAudio;
+    // スタート/次へのタップ起点で同期的に呼ばれるので iOS でも再生できる
+    if (useAudio) speak(target);
 
     const grid = $('#choice-grid');
     grid.innerHTML = '';
@@ -482,7 +558,12 @@
 
       btn.addEventListener('click', () => {
         if (state.answerShown || btn.classList.contains('is-wrong')) return;
-        if (choice.id === target.id) {
+        const isCorrect = choice.id === target.id;
+        // 最初のタップで正否を記録 (一発正解かどうか)
+        if (state.session.firstTry[state.index] === undefined) {
+          state.session.firstTry[state.index] = isCorrect;
+        }
+        if (isCorrect) {
           btn.classList.add('is-correct');
           grid.classList.add('is-answered');
           state.answerShown = true;
@@ -490,6 +571,7 @@
           $('#btn-next').disabled = false;
         } else {
           btn.classList.add('is-wrong');
+          state.session.wrongTaps++;
         }
       });
 
@@ -522,6 +604,7 @@
     items: [],        // { card, side: 'word'|'pic', el, done }
     connections: [],  // { wordEl, picEl }
     pending: null,    // タップ選択中のアイテム
+    wrongIds: new Set(), // この画面で誤答に関わったカードid (一発正解の判定用)
   };
 
   function renderMatchQuestion(chunk) {
@@ -532,6 +615,7 @@
     matchState.items = [];
     matchState.connections = [];
     matchState.pending = null;
+    matchState.wrongIds = new Set();
     clearMatchLines();
 
     // 左右で並び順を独立にシャッフル (同じ高さ同士が正解にならないように)
@@ -608,6 +692,8 @@
       pic.el.classList.add('is-done');
       setMatchPending(null);
       matchState.connections.push({ wordEl: word.el, picEl: pic.el });
+      // この組に誤答が絡んでいなければ一発正解
+      state.session.firstTry.push(!matchState.wrongIds.has(word.card.id));
       redrawMatchLines();
       speak(word.card);
       if (matchState.items.every((it) => it.done)) {
@@ -615,7 +701,10 @@
         $('#btn-next').disabled = false;
       }
     } else {
-      // 不正解: 両方を一瞬赤くして選択解除
+      // 不正解: 両方を一瞬赤くして選択解除。関わった両方の組を誤答扱いにする
+      state.session.wrongTaps++;
+      matchState.wrongIds.add(a.card.id);
+      matchState.wrongIds.add(b.card.id);
       setMatchPending(null);
       [a.el, b.el].forEach((el) => {
         el.classList.remove('is-wrong');
@@ -765,6 +854,7 @@
     $('#btn-replay').hidden = true;
     $('#btn-hint').hidden = true;
     state.hintShown = true;
+    state.session.hintUsed[state.index] = true;
   }
 
   // 次の2問の画像と音声をバックグラウンドで先読み (体感速度向上)
@@ -799,6 +889,7 @@
 
   function showAnswer() {
     if (state.answerShown) return;
+    stopTimer();
     const card = state.queue[state.index];
     $('#answer-label').textContent = displayLabel(card);
     $('#answer-label').classList.remove('is-hint');
@@ -807,6 +898,9 @@
     $('#btn-hint').hidden = true;
     $('#btn-show-answer').hidden = true;
     $('#btn-next').hidden = false;
+    // ST が ○/× を記録できるようにする (任意)
+    $('#judge-row').hidden = false;
+    renderJudgeButtons();
 
     if (state.index === state.queue.length - 1) {
       $('#btn-next').textContent = '終了';
@@ -816,6 +910,19 @@
 
     state.answerShown = true;
     speak(card);
+  }
+
+  function setJudgment(value) {
+    // 同じボタンをもう一度押したら取り消し (未評価に戻す)
+    const current = state.session.judgments[state.index];
+    state.session.judgments[state.index] = current === value ? undefined : value;
+    renderJudgeButtons();
+  }
+
+  function renderJudgeButtons() {
+    const j = state.session.judgments[state.index];
+    $('#btn-judge-ok').classList.toggle('is-selected', j === true);
+    $('#btn-judge-ng').classList.toggle('is-selected', j === false);
   }
 
   function nextCard() {
@@ -829,9 +936,54 @@
   }
 
   function endQuiz() {
+    stopTimer();
     stopSpeak();
     $('#end-count').textContent = state.queue.length;
+    renderEndResults();
     showScreen('screen-end');
+  }
+
+  // 終了画面の正答率。セッション内の記録だけを使い、どこにも保存しない
+  function renderEndResults() {
+    const box = $('#end-results');
+    const s = state.session;
+    const pct = (num, den) => (den > 0 ? `${Math.round((num / den) * 100)}%` : '—');
+    let html = '';
+
+    if (state.mode === 'naming') {
+      const judged = s.judgments.filter((j) => j !== undefined);
+      const ok = judged.filter((j) => j === true).length;
+      const ng = judged.length - ok;
+      const unrated = state.queue.length - judged.length;
+      const hints = s.hintUsed.filter(Boolean).length;
+      const timeouts = s.timedOut.filter(Boolean).length;
+      if (judged.length === 0) {
+        box.hidden = true;
+        return;
+      }
+      html += `<div class="end-rate"><span class="end-rate-value">${pct(ok, judged.length)}</span>` +
+              `<span class="end-rate-label">正答率 (${ok} / ${judged.length})</span></div>`;
+      html += `<p class="end-breakdown">○ 言えた ${ok}　× 言えなかった ${ng}` +
+              (unrated > 0 ? `　未評価 ${unrated}` : '') +
+              `<br />ヒント使用 ${hints}` +
+              (state.timeLimit ? `　時間切れ ${timeouts}` : '') + `</p>`;
+    } else {
+      // 選択・線つなぎ: 一発正解の割合
+      const total = s.firstTry.length;
+      const ok = s.firstTry.filter(Boolean).length;
+      if (total === 0) {
+        box.hidden = true;
+        return;
+      }
+      const unit = state.mode === 'matching' ? '組' : '問';
+      html += `<div class="end-rate"><span class="end-rate-value">${pct(ok, total)}</span>` +
+              `<span class="end-rate-label">正答率 (${ok} / ${total}${unit})</span></div>`;
+      html += `<p class="end-breakdown">一発正解 ${ok}${unit}　やり直しあり ${total - ok}${unit}` +
+              `<br />誤答タップ ${s.wrongTaps} 回</p>`;
+    }
+    html += '<p class="end-note">結果はこの画面を閉じると消えます (保存されません)</p>';
+    box.innerHTML = html;
+    box.hidden = false;
   }
 
   // ---- Audio (VOICEVOX No.7 アナウンス で事前生成した wav を再生) ----
@@ -954,9 +1106,16 @@
       const card = state.queue[state.index];
       if (card) speak(card);
     });
+    $('#btn-select-replay').addEventListener('click', () => {
+      const card = state.queue[state.index];
+      if (card) speak(card);
+    });
+    $('#btn-judge-ok').addEventListener('click', () => setJudgment(true));
+    $('#btn-judge-ng').addEventListener('click', () => setJudgment(false));
     $('#btn-next').addEventListener('click', nextCard);
     $('#btn-quiz-quit').addEventListener('click', () => {
       if (confirm('セッションを中断しますか?')) {
+        stopTimer();
         stopSpeak();
         showScreen('screen-setup');
       }
