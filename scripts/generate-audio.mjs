@@ -21,6 +21,21 @@ const TTS_OVERRIDES = {
   body_teeth:      '歯',        // 「は」だけだと助詞「ワ」と読まれる
   job_nurse:       '看護師',     // 「かんごし」だと「カンゴ」+「シ」に分割される
   music_harmonica: 'ハーモニカ',  // 「はーもにか」だと「ワーモニカ」と読まれる(カタカナで回避)
+  action_cry:      '泣く',      // ひらがなの「なく」は別アクセントになる
+  action_jump:     '跳ぶ',      // 語義を固定
+  action_stand:    '立つ',      // 語義を固定
+  action_wash:     '洗う',      // ひらがなの「あらう」は「アラア」に崩れる
+  action_wear:     '着る',      // ひらがなだと「切る」側のアクセントになる
+};
+
+// 辞書上の自動解析では意図した抑揚にならない語の個別調整。
+const TTS_PARAM_OVERRIDES = {
+  // 文脈を付けて解析した自然な発音から、対象語だけを合成する。
+  action_cry:  { contextText: '悲しくて泣く', phraseIndex: 1 },
+  action_jump: { contextText: '子どもが高く跳ぶ', phraseIndex: 1, moraStart: -2 },
+  action_sleep: { contextText: '布団で寝る', phraseIndex: 1 },
+  // 単独の「着る」は不自然に高くなるため、「服を着る」で解析した第2アクセント句だけを合成する。
+  action_wear: { contextText: '服を着る', phraseIndex: 1 },
 };
 
 async function exists(p) {
@@ -39,15 +54,37 @@ function moraCount(s) {
   return n;
 }
 
-async function synthesize(text, { speedScale, postPhonemeLength }) {
+async function synthesize(text, {
+  speedScale,
+  postPhonemeLength,
+  intonationScale = 1.0,
+  accent,
+  contextText,
+  phraseIndex,
+  moraStart,
+}) {
+  const queryText = contextText ?? text;
   const q = await fetch(
-    `${ENGINE}/audio_query?text=${encodeURIComponent(text)}&speaker=${SPEAKER_ID}`,
+    `${ENGINE}/audio_query?text=${encodeURIComponent(queryText)}&speaker=${SPEAKER_ID}`,
     { method: 'POST' }
   );
   if (!q.ok) throw new Error(`audio_query ${q.status}: ${await q.text()}`);
   const query = await q.json();
+  if (phraseIndex != null) {
+    const phrase = query.accent_phrases[phraseIndex];
+    if (!phrase) throw new Error(`accent phrase ${phraseIndex} not found for: ${queryText}`);
+    if (moraStart != null) {
+      phrase.moras = phrase.moras.slice(moraStart);
+      phrase.accent = Math.min(phrase.accent, phrase.moras.length);
+    }
+    query.accent_phrases = [phrase];
+  }
   query.speedScale = speedScale;
   query.postPhonemeLength = postPhonemeLength;
+  query.intonationScale = intonationScale;
+  if (accent != null && query.accent_phrases.length > 0) {
+    query.accent_phrases[0].accent = accent;
+  }
 
   const s = await fetch(`${ENGINE}/synthesis?speaker=${SPEAKER_ID}`, {
     method: 'POST',
@@ -77,6 +114,7 @@ async function main() {
     const params = mora <= 1
       ? { speedScale: 0.80, postPhonemeLength: 0.4 }
       : { speedScale: 0.95, postPhonemeLength: 0.1 };
+    Object.assign(params, TTS_PARAM_OVERRIDES[card.id]);
     const tag = ttsText === card.reading ? card.reading : `${card.reading} → ${ttsText}`;
     process.stdout.write(`[${generated + 1}] ${card.id} (${tag}, ${mora}mora) ... `);
     const wav = await synthesize(ttsText, params);

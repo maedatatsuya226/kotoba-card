@@ -6,7 +6,7 @@
 
 ## 🎵 音声品質の向上（✅ 着手済：VOICEVOX No.7 アナウンス）
 
-**現状**: VOICEVOX `No.7 アナウンス` で142語を事前生成、`audio/[category]/[id].wav` として同梱（4.9MB）。Web Speech はフォールバック。詳細は `DECISIONS.md` §2。
+**現状**: VOICEVOX `No.7 アナウンス` で176語を事前生成、`audio/[category]/[id].wav` として同梱。Web Speech はフォールバック。詳細は `DECISIONS.md` §2。
 
 **検討中だった代替案（不採用）**:
 - AivisSpeech (Anneli) → 声優の無断学習問題で医療用途には不適
