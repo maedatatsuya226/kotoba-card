@@ -1,0 +1,191 @@
+{
+  "_comment": "動作絵(動詞)の生成リスト。画像を images/action/<id>.png に生成・最適化したあと `node scripts/merge-pending.mjs` で cards.json に取り込む。取り込まれた項目はこのファイルから自動で消える。",
+  "category": {
+    "id": "action",
+    "label": "動作",
+    "core": false
+  },
+  "prompt_template": "{english_prompt}, a single adult person performing the action, full body visible, clear and simple pose, centered on a pure white background, flat illustration style. Style: clean, educational illustration for speech therapy materials, the action must be recognizable at a glance. Colors: soft, natural. Composition: only the person and the object needed for the action, no other background elements, no text, no logos. Aspect ratio: 1:1.",
+  "cards": [
+    {
+      "id": "action_eat",
+      "category": "action",
+      "japanese_label": "たべる",
+      "kanji_label": "食べる",
+      "reading": "たべる",
+      "familiarity": "high",
+      "english_prompt": "a person eating a bowl of rice with chopsticks, sitting at a table"
+    },
+    {
+      "id": "action_drink",
+      "category": "action",
+      "japanese_label": "のむ",
+      "kanji_label": "飲む",
+      "reading": "のむ",
+      "familiarity": "high",
+      "english_prompt": "a person drinking water from a glass, glass raised to the mouth"
+    },
+    {
+      "id": "action_sleep",
+      "category": "action",
+      "japanese_label": "ねる",
+      "kanji_label": "寝る",
+      "reading": "ねる",
+      "familiarity": "high",
+      "english_prompt": "a person sleeping in a bed with eyes closed, head on a pillow, blanket pulled up"
+    },
+    {
+      "id": "action_walk",
+      "category": "action",
+      "japanese_label": "あるく",
+      "kanji_label": "歩く",
+      "reading": "あるく",
+      "familiarity": "high",
+      "english_prompt": "a person walking calmly, side view, one foot forward, arms swinging naturally"
+    },
+    {
+      "id": "action_run",
+      "category": "action",
+      "japanese_label": "はしる",
+      "kanji_label": "走る",
+      "reading": "はしる",
+      "familiarity": "high",
+      "english_prompt": "a person running fast, side view, both feet off the ground, arms pumping"
+    },
+    {
+      "id": "action_sit",
+      "category": "action",
+      "japanese_label": "すわる",
+      "kanji_label": "座る",
+      "reading": "すわる",
+      "familiarity": "high",
+      "english_prompt": "a person sitting on a simple chair, hands on knees, relaxed"
+    },
+    {
+      "id": "action_stand",
+      "category": "action",
+      "japanese_label": "たつ",
+      "kanji_label": "立つ",
+      "reading": "たつ",
+      "familiarity": "high",
+      "english_prompt": "a person standing up from a chair, mid-motion, knees slightly bent, hands pushing on the seat"
+    },
+    {
+      "id": "action_read",
+      "category": "action",
+      "japanese_label": "よむ",
+      "kanji_label": "読む",
+      "reading": "よむ",
+      "familiarity": "high",
+      "english_prompt": "a person reading an open book held in both hands, looking down at the pages"
+    },
+    {
+      "id": "action_write",
+      "category": "action",
+      "japanese_label": "かく",
+      "kanji_label": "書く",
+      "reading": "かく",
+      "familiarity": "high",
+      "english_prompt": "a person writing on paper with a pencil at a desk"
+    },
+    {
+      "id": "action_laugh",
+      "category": "action",
+      "japanese_label": "わらう",
+      "kanji_label": "笑う",
+      "reading": "わらう",
+      "familiarity": "high",
+      "english_prompt": "a person laughing happily with a big open smile, one hand near the mouth"
+    },
+    {
+      "id": "action_cry",
+      "category": "action",
+      "japanese_label": "なく",
+      "kanji_label": "泣く",
+      "reading": "なく",
+      "familiarity": "high",
+      "english_prompt": "a person crying with visible tears, wiping eyes with one hand"
+    },
+    {
+      "id": "action_wash",
+      "category": "action",
+      "japanese_label": "あらう",
+      "kanji_label": "洗う",
+      "reading": "あらう",
+      "familiarity": "high",
+      "english_prompt": "a person washing hands under running water at a sink"
+    },
+    {
+      "id": "action_cut",
+      "category": "action",
+      "japanese_label": "きる",
+      "kanji_label": "切る",
+      "reading": "きる",
+      "familiarity": "high",
+      "english_prompt": "a person cutting a carrot with a kitchen knife on a cutting board"
+    },
+    {
+      "id": "action_throw",
+      "category": "action",
+      "japanese_label": "なげる",
+      "kanji_label": "投げる",
+      "reading": "なげる",
+      "familiarity": "mid",
+      "english_prompt": "a person throwing a ball, arm extended forward, ball in the air"
+    },
+    {
+      "id": "action_jump",
+      "category": "action",
+      "japanese_label": "とぶ",
+      "kanji_label": "跳ぶ",
+      "reading": "とぶ",
+      "familiarity": "mid",
+      "english_prompt": "a person jumping straight up with both feet off the ground, arms raised"
+    },
+    {
+      "id": "action_swim",
+      "category": "action",
+      "japanese_label": "およぐ",
+      "kanji_label": "泳ぐ",
+      "reading": "およぐ",
+      "familiarity": "mid",
+      "english_prompt": "a person swimming freestyle in blue water, head turned to breathe"
+    },
+    {
+      "id": "action_sing",
+      "category": "action",
+      "japanese_label": "うたう",
+      "kanji_label": "歌う",
+      "reading": "うたう",
+      "familiarity": "mid",
+      "english_prompt": "a person singing with mouth open, holding a microphone, small music notes nearby"
+    },
+    {
+      "id": "action_brush",
+      "category": "action",
+      "japanese_label": "みがく",
+      "kanji_label": "磨く",
+      "reading": "みがく",
+      "familiarity": "mid",
+      "english_prompt": "a person brushing teeth with a toothbrush, toothbrush in the mouth"
+    },
+    {
+      "id": "action_wear",
+      "category": "action",
+      "japanese_label": "きる",
+      "kanji_label": "着る",
+      "reading": "きる",
+      "familiarity": "mid",
+      "english_prompt": "a person putting on a jacket, one arm already in the sleeve, the other arm reaching back"
+    },
+    {
+      "id": "action_open",
+      "category": "action",
+      "japanese_label": "あける",
+      "kanji_label": "開ける",
+      "reading": "あける",
+      "familiarity": "mid",
+      "english_prompt": "a person opening a door by the handle, door half open"
+    }
+  ]
+}

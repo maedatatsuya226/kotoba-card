@@ -38,7 +38,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v24';
+  const APP_VERSION = 'v25';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -427,7 +427,13 @@
     const inScope = state.cards.filter(
       (c) => c.id !== target.id && !confusable(c) && state.selectedCategories.has(c.category)
     );
-    let distractors = shuffleArray(inScope).slice(0, wanted);
+    // 情景カードに対の絵 (主語と目的語を入れ替えたもの) があれば必ず選択肢に含める
+    // (「猫が犬を追いかける」に対して「犬が猫を追いかける」= 短文理解の本命ディストラクタ)
+    const pairCard = target.pair ? state.cards.find((c) => c.id === target.pair) : null;
+    const pinned = pairCard && wanted > 0 ? [pairCard] : [];
+    let distractors = pinned.concat(
+      shuffleArray(inScope.filter((c) => !pinned.includes(c))).slice(0, wanted - pinned.length)
+    );
     if (distractors.length < wanted) {
       const used = new Set([target.id, ...distractors.map((c) => c.id)]);
       const rest = shuffleArray(state.cards.filter((c) => !used.has(c.id) && !confusable(c)));
@@ -454,8 +460,12 @@
     $('#answer-area').hidden = true;
     $('#answer-label').textContent = '';
     $('#answer-label').classList.remove('is-hint');
-    $('#btn-hint').hidden = isSelect || isMatch;
+    // 情景カード (type: scene) は正解が一つでないため、ヒント(モーラ○)は出さず
+    // 「答えを見る」で模範文を表示する
+    const isScene = !isMatch && state.queue[state.index] && state.queue[state.index].type === 'scene';
+    $('#btn-hint').hidden = isSelect || isMatch || isScene;
     $('#btn-show-answer').hidden = isSelect || isMatch;
+    $('#btn-show-answer').textContent = isScene ? '模範文を見る' : '答えを見る';
     // 選択・線つなぎでは「次へ」を最初からグレー表示しておく。
     // 後から出現させるとフッターの高さが変わり、線つなぎの線がずれるため
     const btnNext = $('#btn-next');
@@ -533,6 +543,7 @@
     const promptEl = $('#select-prompt');
     promptEl.textContent = useText ? displayLabel(target) : '';
     promptEl.hidden = !useText;
+    promptEl.classList.toggle('is-sentence', target.type === 'scene');
     $('#btn-select-replay').hidden = !useAudio;
     // スタート/次へのタップ起点で同期的に呼ばれるので iOS でも再生できる
     if (useAudio) speak(target);
@@ -893,6 +904,7 @@
     const card = state.queue[state.index];
     $('#answer-label').textContent = displayLabel(card);
     $('#answer-label').classList.remove('is-hint');
+    $('#answer-label').classList.toggle('is-sentence', card.type === 'scene');
     $('#answer-area').hidden = false;
     $('#btn-replay').hidden = false;
     $('#btn-hint').hidden = true;

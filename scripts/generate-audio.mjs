@@ -69,7 +69,8 @@ async function main() {
     if (!FORCE && await exists(outPath)) { skipped++; continue; }
 
     await mkdir(dir, { recursive: true });
-    const ttsText = TTS_OVERRIDES[card.id] ?? card.reading;
+    // 情景カード等は cards.json 側の tts_text (漢字文) を優先。次に本ファイルの上書き表
+    const ttsText = card.tts_text ?? TTS_OVERRIDES[card.id] ?? card.reading;
     // 1モーラ語は再生時間が短くて高齢患者に聞き取りにくいので、
     // 速度を遅めにし、後ろに無音を追加してリリースを聞き取りやすくする
     const mora = moraCount(card.reading);
