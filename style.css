@@ -109,35 +109,60 @@ body {
   color: var(--color-muted);
 }
 
-.start-tasks {
+/* 3つの入口 (話す / 選ぶ / つなぐ) と、その下の課題プリセット */
+.start-entries {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  max-width: 560px;
-  margin: 10px 0 6px;
+  max-width: 540px;
+  margin: 6px 0 4px;
 }
-.start-task {
+.start-entry {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 12px 14px 14px;
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+.start-entry-head {
+  appearance: none;
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 8px;
+  text-align: left;
+}
+.start-entry-head:hover { background: #f1f5f9; }
+.start-entry-head:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.start-entry-name { font-size: 20px; font-weight: 700; color: #0f172a; }
+.start-entry-desc { font-size: 13px; color: var(--color-muted); }
+.start-presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.start-preset {
   appearance: none;
   cursor: pointer;
   font-family: inherit;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 16px 10px 14px;
-  background: var(--color-surface);
+  font-size: 15px;
+  font-weight: 600;
+  color: #334155;
+  background: #f8fafc;
   border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
+  border-radius: 999px;
+  padding: 9px 16px;
+  min-height: 42px;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.05s ease;
 }
-.start-task:hover { border-color: #93c5fd; box-shadow: var(--shadow-md); }
-.start-task:active { transform: translateY(1px); }
-.start-task:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
-.start-task-icon { font-size: 30px; line-height: 1; }
-.start-task-name { font-size: 17px; font-weight: 700; color: #0f172a; }
-.start-task-desc { font-size: 12px; line-height: 1.45; color: var(--color-muted); }
+.start-preset:hover { border-color: var(--color-primary); background: var(--color-primary-soft); color: var(--color-primary); }
+.start-preset:active { transform: translateY(1px); }
+.start-preset:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
 
 .app-version {
   font-size: 12px;
@@ -326,6 +351,37 @@ body {
   border-radius: 999px;
   font-weight: 700;
 }
+
+/* ===== 詳細設定 (折りたたみ + 現在値の要約) ===== */
+.setup-detail { padding: 0; overflow: hidden; }
+.detail-toggle {
+  appearance: none;
+  border: none;
+  background: none;
+  width: 100%;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  text-align: left;
+}
+.detail-toggle:hover { background: #f8fafc; }
+.detail-toggle:focus-visible { outline: 3px solid #93c5fd; outline-offset: -3px; }
+.detail-chev {
+  color: var(--color-muted);
+  font-size: 12px;
+  margin-top: 5px;
+  transition: transform 0.15s ease;
+}
+.setup-detail.is-open .detail-chev { transform: rotate(90deg); }
+.detail-text { display: grid; gap: 4px; min-width: 0; }
+.detail-title { font-size: 16px; font-weight: 700; color: #0f172a; }
+.detail-summary { font-size: 13px; color: var(--color-muted); line-height: 1.55; }
+.detail-body { padding: 0 18px 20px; display: grid; gap: 18px; }
+.detail-group { border-top: 1px solid var(--color-border); padding-top: 16px; }
+@media (prefers-reduced-motion: reduce) { .detail-chev { transition: none; } }
 
 /* ===== 課題の種類 (モード切替) ===== */
 .mode-select {
@@ -739,6 +795,10 @@ body {
 }
 .judge-ok.is-selected { background: #dcfce7; border-color: #16a34a; color: #15803d; }
 .judge-ng.is-selected { background: #fee2e2; border-color: #dc2626; color: #b91c1c; }
+/* 情景説明の3段階 */
+.judge-indep.is-selected { background: #dcfce7; border-color: #16a34a; color: #15803d; }
+.judge-cue.is-selected { background: #fef3c7; border-color: #b45309; color: #92400e; }
+.judge-hard.is-selected { background: #fee2e2; border-color: #dc2626; color: #b91c1c; }
 
 /* 選択モード: お題行 (文字 / もう一度きく) */
 .select-prompt-row {
@@ -1047,6 +1107,25 @@ body {
   color: #334155;
   line-height: 1.7;
 }
+/* 情景説明: 自立 / 手がかりあり / 困難 の帯 */
+.end-bar3 {
+  display: flex;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e2e8f0;
+  margin: 12px 0 8px;
+}
+.end-bar3 i { display: block; height: 100%; }
+.end-bar3 .is-indep { background: #16a34a; }
+.end-bar3 .is-cue { background: #f59e0b; }
+.end-bar3 .is-hard { background: #dc2626; }
+.end-legend { display: inline-flex; align-items: center; gap: 5px; margin-right: 12px; }
+.end-legend::before { content: ""; width: 10px; height: 10px; border-radius: 3px; }
+.end-legend.is-indep::before { background: #16a34a; }
+.end-legend.is-cue::before { background: #f59e0b; }
+.end-legend.is-hard::before { background: #dc2626; }
+
 .end-note {
   margin: 8px 0 0;
   font-size: 12px;

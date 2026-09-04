@@ -38,7 +38,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v27';
+  const APP_VERSION = 'v28';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -48,6 +48,22 @@
     hard:     { high: 2,  mid: 4,  low: 4 },
     clear:    { high: 0,  mid: 0,  low: 0 },
   };
+
+  // ホームの課題プリセット。タップすると設定画面がこの初期値で開く。
+  // categories: 'core' = 基本カテゴリ / 'core+action' = 基本+動作 / 配列 = そのカテゴリのみ
+  // fam: 親密度の配分プリセット名。その配分を当ててから total に合わせて比例調整する
+  const TASK_PRESETS = {
+    'noun-naming':       { title: '名詞呼称',           mode: 'naming',   categories: 'core',        total: 10, fam: 'balanced' },
+    'verb-naming':       { title: '動作呼称',           mode: 'naming',   categories: ['action'],    total: 10, fam: 'balanced' },
+    'scene-description': { title: '情景説明',           mode: 'naming',   categories: ['scene'],     total: 8,  fam: 'balanced' },
+    'read-select':       { title: '文字を見て絵を選ぶ', mode: 'select',   categories: 'core+action', total: 10, fam: 'balanced', promptType: 'text',  choiceCount: 3 },
+    'listen-select':     { title: '単語を聞いて絵を選ぶ', mode: 'select', categories: 'core+action', total: 10, fam: 'balanced', promptType: 'audio', choiceCount: 3 },
+    'sentence-select':   { title: '文を聞いて情景絵を選ぶ', mode: 'select', categories: ['scene'],   total: 8,  fam: 'balanced', promptType: 'audio', choiceCount: 2 },
+    'matching-basic':    { title: '文字と絵を線でつなぐ', mode: 'matching', categories: 'core+action', total: 9, fam: 'balanced', pairCount: 3 },
+  };
+  const MODE_LABEL = { naming: '話す', select: '選ぶ', matching: 'つなぐ' };
+  const SCRIPT_LABEL = { default: '標準', hiragana: 'ひらがな', katakana: 'カタカナ', kanji: '漢字' };
+  const PROMPT_LABEL = { text: '文字', audio: '音声のみ', both: '文字＋音声' };
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -228,7 +244,93 @@
   function bindShuffleToggle() {
     $('#shuffle-toggle').addEventListener('change', (e) => {
       state.shuffle = e.target.checked;
+      updateDetailSummary();
     });
+  }
+
+  // ---- 詳細設定 (折りたたみ + 現在値の要約) ----
+  function categorySummary() {
+    const sel = state.selectedCategories;
+    if (sel.size === 0) return 'なし';
+    if (sel.size === state.categories.length) return 'すべて';
+    const core = state.categories.filter((c) => c.core).map((c) => c.id);
+    if (sel.size === core.length && core.every((id) => sel.has(id))) return '基本のみ';
+    const names = state.categories.filter((c) => sel.has(c.id)).map((c) => c.label);
+    return names.length <= 2 ? names.join('・') : `${names.length}カテゴリ`;
+  }
+
+  function updateDetailSummary() {
+    const fc = state.familiarityCounts;
+    const parts = [
+      `課題: ${MODE_LABEL[state.mode]}`,
+      `カテゴリ: ${categorySummary()}`,
+      `内訳: ${fc.high}/${fc.mid}/${fc.low}`,
+      `文字: ${SCRIPT_LABEL[state.script]}`,
+    ];
+    if (state.mode === 'naming') parts.push(`制限時間: ${state.timeLimit ? `${state.timeLimit}秒` : 'なし'}`);
+    if (state.mode === 'select') parts.push(`お題: ${PROMPT_LABEL[state.promptType]}`, `選択肢: ${state.choiceCount}枚`);
+    if (state.mode === 'matching') parts.push(`組: ${state.pairCount}`);
+    parts.push(`出題順: ${state.shuffle ? 'ランダム' : '順番'}`);
+    $('#detail-summary').textContent = parts.join(' ・ ');
+  }
+
+  function bindDetailToggle() {
+    const btn = $('#detail-toggle');
+    const body = $('#detail-body');
+    const apply = (open) => {
+      body.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+      $('#setup-detail').classList.toggle('is-open', open);
+    };
+    // 開閉状態は端末に記憶する (患者情報ではなく表示の好みなので localStorage 可)
+    let open = false;
+    try { open = localStorage.getItem('kotoba-detail-open') === '1'; } catch (_) { /* noop */ }
+    apply(open);
+    btn.addEventListener('click', () => {
+      const next = body.hidden;
+      apply(next);
+      try { localStorage.setItem('kotoba-detail-open', next ? '1' : '0'); } catch (_) { /* noop */ }
+    });
+  }
+
+  // ---- ホームのプリセット ----
+  function resolveCategories(spec) {
+    const core = state.categories.filter((c) => c.core).map((c) => c.id);
+    const ids = spec === 'core' ? core : spec === 'core+action' ? [...core, 'action'] : spec;
+    return ids.filter((id) => state.categories.some((c) => c.id === id));
+  }
+
+  function applyTaskPreset(key) {
+    const p = TASK_PRESETS[key];
+    if (!p) return;
+    const modeBtn = $(`.mode-select .mode-btn[data-mode="${p.mode}"]`);
+    if (modeBtn) modeBtn.click();
+    state.selectedCategories = new Set(resolveCategories(p.categories));
+    $$('#cat-list input[type=checkbox]').forEach((cb) => {
+      cb.checked = state.selectedCategories.has(cb.value);
+    });
+    if (p.promptType) {
+      const b = $(`[data-prompt-type="${p.promptType}"]`);
+      if (b) b.click();
+    }
+    if (p.choiceCount) {
+      state.choiceCount = p.choiceCount;
+      $('#choice-count-slider').value = p.choiceCount;
+      $('#choice-count-value').textContent = p.choiceCount;
+    }
+    if (p.pairCount) {
+      state.pairCount = p.pairCount;
+      $('#pair-count-slider').value = p.pairCount;
+      $('#pair-count-value').textContent = p.pairCount;
+    }
+    // 親密度: 配分プリセットを利用可能数でクランプしてから総数に合わせる
+    const avail = getAvailableByFamiliarity();
+    FAM_KEYS.forEach((fam) => {
+      state.familiarityCounts[fam] = Math.min(PRESETS[p.fam][fam], avail[fam]);
+    });
+    scaleToTotal(p.total);
+    updateSummary();
+    $('#setup-title').textContent = `設定 — ${p.title}`;
   }
 
   function bindModeButtons() {
@@ -242,6 +344,7 @@
         $('#prompt-type-row').hidden = state.mode !== 'select';
         $('#choice-count-row').hidden = state.mode !== 'select';
         $('#pair-count-row').hidden = state.mode !== 'matching';
+        updateDetailSummary();
       });
     });
 
@@ -252,20 +355,29 @@
         btn.addEventListener('click', () => {
           apply(btn.getAttribute(attr));
           btns.forEach((b) => b.classList.toggle('is-selected', b === btn));
+          updateDetailSummary();
         });
       });
     };
-    bindOptionGroup('data-time-limit', (v) => { state.timeLimit = parseInt(v, 10) || 0; });
     bindOptionGroup('data-prompt-type', (v) => { state.promptType = v; });
+
+    // 制限時間: 0〜30秒のスライダー (0 = なし)
+    $('#time-limit-slider').addEventListener('input', (e) => {
+      state.timeLimit = parseInt(e.target.value, 10) || 0;
+      $('#time-limit-value').textContent = state.timeLimit ? `${state.timeLimit}秒` : 'なし';
+      updateDetailSummary();
+    });
 
     $('#choice-count-slider').addEventListener('input', (e) => {
       state.choiceCount = parseInt(e.target.value, 10);
       $('#choice-count-value').textContent = state.choiceCount;
+      updateDetailSummary();
     });
 
     $('#pair-count-slider').addEventListener('input', (e) => {
       state.pairCount = parseInt(e.target.value, 10);
       $('#pair-count-value').textContent = state.pairCount;
+      updateDetailSummary();
     });
 
     $$('.script-select [data-script]').forEach((btn) => {
@@ -274,6 +386,7 @@
         $$('.script-select [data-script]').forEach((b) => {
           b.classList.toggle('is-selected', b === btn);
         });
+        updateDetailSummary();
       });
     });
   }
@@ -342,6 +455,7 @@
       startBtn.disabled = false;
       warning.hidden = true;
     }
+    updateDetailSummary();
   }
 
   // ---- Quiz logic ----
@@ -481,6 +595,7 @@
     state.answerShown = false;
     state.hintShown = false;
     $('#judge-row').hidden = true;
+    $('#judge3-row').hidden = true;
     stopTimer();
     $('#timer').hidden = true; // 呼称で制限時間ありの時だけ startTimer() が表示する
 
@@ -910,8 +1025,10 @@
     $('#btn-hint').hidden = true;
     $('#btn-show-answer').hidden = true;
     $('#btn-next').hidden = false;
-    // ST が ○/× を記録できるようにする (任意)
-    $('#judge-row').hidden = false;
+    // ST が評価を記録できるようにする (任意)。情景は ○/× ではなく3段階
+    const isSceneCard = card.type === 'scene';
+    $('#judge-row').hidden = isSceneCard;
+    $('#judge3-row').hidden = !isSceneCard;
     renderJudgeButtons();
 
     if (state.index === state.queue.length - 1) {
@@ -931,10 +1048,14 @@
     renderJudgeButtons();
   }
 
+  // 評価値: 通常カードは true(○) / false(×)、情景は 'indep' / 'cue' / 'hard'
   function renderJudgeButtons() {
     const j = state.session.judgments[state.index];
     $('#btn-judge-ok').classList.toggle('is-selected', j === true);
     $('#btn-judge-ng').classList.toggle('is-selected', j === false);
+    $('#btn-judge-indep').classList.toggle('is-selected', j === 'indep');
+    $('#btn-judge-cue').classList.toggle('is-selected', j === 'cue');
+    $('#btn-judge-hard').classList.toggle('is-selected', j === 'hard');
   }
 
   function nextCard() {
@@ -963,22 +1084,45 @@
     let html = '';
 
     if (state.mode === 'naming') {
-      const judged = s.judgments.filter((j) => j !== undefined);
-      const ok = judged.filter((j) => j === true).length;
-      const ng = judged.length - ok;
-      const unrated = state.queue.length - judged.length;
+      // 通常カード (○/×) と情景カード (3段階) を分けて集計する
+      const idx = state.queue.map((_, i) => i);
+      const wordIdx = idx.filter((i) => state.queue[i].type !== 'scene');
+      const sceneIdx = idx.filter((i) => state.queue[i].type === 'scene');
+      const judgedWords = wordIdx.map((i) => s.judgments[i]).filter((j) => j === true || j === false);
+      const judgedScenes = sceneIdx.map((i) => s.judgments[i]).filter((j) => typeof j === 'string');
       const hints = s.hintUsed.filter(Boolean).length;
       const timeouts = s.timedOut.filter(Boolean).length;
-      if (judged.length === 0) {
+
+      if (judgedWords.length > 0) {
+        const ok = judgedWords.filter((j) => j === true).length;
+        const ng = judgedWords.length - ok;
+        const unrated = wordIdx.length - judgedWords.length;
+        html += `<div class="end-rate"><span class="end-rate-value">${pct(ok, judgedWords.length)}</span>` +
+                `<span class="end-rate-label">正答率 (${ok} / ${judgedWords.length})</span></div>`;
+        html += `<p class="end-breakdown">○ 言えた ${ok}　× 言えなかった ${ng}` +
+                (unrated > 0 ? `　未評価 ${unrated}` : '') +
+                `<br />ヒント使用 ${hints}` +
+                (state.timeLimit ? `　時間切れ ${timeouts}` : '') + `</p>`;
+      }
+      if (judgedScenes.length > 0) {
+        const c = { indep: 0, cue: 0, hard: 0 };
+        judgedScenes.forEach((j) => { c[j]++; });
+        const n = judgedScenes.length;
+        const unrated = sceneIdx.length - n;
+        const w = (k) => `${(c[k] / n) * 100}%`;
+        html += `<div class="end-rate"><span class="end-rate-value">${c.indep}</span>` +
+                `<span class="end-rate-label">/ ${n} 自立 (情景説明)</span></div>`;
+        html += `<div class="end-bar3"><i class="is-indep" style="width:${w('indep')}"></i>` +
+                `<i class="is-cue" style="width:${w('cue')}"></i><i class="is-hard" style="width:${w('hard')}"></i></div>`;
+        html += `<p class="end-breakdown"><span class="end-legend is-indep">自立 ${c.indep}</span>` +
+                `<span class="end-legend is-cue">手がかりあり ${c.cue}</span>` +
+                `<span class="end-legend is-hard">困難 ${c.hard}</span>` +
+                (unrated > 0 ? `　未評価 ${unrated}` : '') + `</p>`;
+      }
+      if (!html) {
         box.hidden = true;
         return;
       }
-      html += `<div class="end-rate"><span class="end-rate-value">${pct(ok, judged.length)}</span>` +
-              `<span class="end-rate-label">正答率 (${ok} / ${judged.length})</span></div>`;
-      html += `<p class="end-breakdown">○ 言えた ${ok}　× 言えなかった ${ng}` +
-              (unrated > 0 ? `　未評価 ${unrated}` : '') +
-              `<br />ヒント使用 ${hints}` +
-              (state.timeLimit ? `　時間切れ ${timeouts}` : '') + `</p>`;
     } else {
       // 選択・線つなぎ: 一発正解の割合
       const total = s.firstTry.length;
@@ -1093,15 +1237,20 @@
 
   // ---- Navigation bindings ----
   function bindNavigation() {
-    $('#btn-go-setup').addEventListener('click', () => {
-      warmUpSpeech();
-      showScreen('screen-setup');
-    });
-    // スタート画面の課題カード: その課題を選んだ状態で設定画面へ
+    // ホームの入口見出し: その課題の種類だけ切り替え、他は前回の設定のまま設定画面へ
     $$('[data-start-mode]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const modeBtn = $(`.mode-select .mode-btn[data-mode="${btn.dataset.startMode}"]`);
         if (modeBtn) modeBtn.click();
+        $('#setup-title').textContent = `設定 — ${btn.dataset.entryTitle || '出題設定'}`;
+        warmUpSpeech();
+        showScreen('screen-setup');
+      });
+    });
+    // ホームの課題プリセット: その課題の初期値で設定画面へ
+    $$('[data-preset]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        applyTaskPreset(btn.dataset.preset);
         warmUpSpeech();
         showScreen('screen-setup');
       });
@@ -1124,6 +1273,9 @@
     });
     $('#btn-judge-ok').addEventListener('click', () => setJudgment(true));
     $('#btn-judge-ng').addEventListener('click', () => setJudgment(false));
+    $('#btn-judge-indep').addEventListener('click', () => setJudgment('indep'));
+    $('#btn-judge-cue').addEventListener('click', () => setJudgment('cue'));
+    $('#btn-judge-hard').addEventListener('click', () => setJudgment('hard'));
     $('#btn-next').addEventListener('click', nextCard);
     $('#btn-quiz-quit').addEventListener('click', () => {
       if (confirm('セッションを中断しますか?')) {
@@ -1155,6 +1307,7 @@
     bindFamiliarityPresets();
     bindShuffleToggle();
     bindModeButtons();
+    bindDetailToggle();
     bindNavigation();
     updateSummary();
   }

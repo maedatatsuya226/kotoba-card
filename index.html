@@ -37,26 +37,45 @@
         <h1 class="app-title">ことばカード</h1>
         <p class="app-subtitle">言語聴覚療法用 絵カードトレーニング</p>
 
-        <!-- 課題をタップすると、その課題が選ばれた状態で設定画面へ -->
-        <div class="start-tasks">
-          <button class="start-task" type="button" data-start-mode="naming">
-            <span class="start-task-icon" aria-hidden="true">🗣️</span>
-            <span class="start-task-name">呼称</span>
-            <span class="start-task-desc">絵を見て<br />ことばを言う</span>
-          </button>
-          <button class="start-task" type="button" data-start-mode="select">
-            <span class="start-task-icon" aria-hidden="true">👆</span>
-            <span class="start-task-name">選択</span>
-            <span class="start-task-desc">ことばに合う<br />絵を選ぶ</span>
-          </button>
-          <button class="start-task" type="button" data-start-mode="matching">
-            <span class="start-task-icon" aria-hidden="true">✏️</span>
-            <span class="start-task-name">線つなぎ</span>
-            <span class="start-task-desc">ことばと絵を<br />線でつなぐ</span>
-          </button>
+        <!--
+          3つの入口 (患者の反応形式) と、その下の臨床的な課題プリセット。
+          入口の見出しをタップ → 前回の設定のまま設定画面へ
+          課題名をタップ     → その課題の初期値で設定画面へ
+        -->
+        <div class="start-entries">
+          <div class="start-entry">
+            <button class="start-entry-head" type="button" data-start-mode="naming" data-entry-title="話す">
+              <span class="start-entry-name">話す</span>
+              <span class="start-entry-desc">絵を見て ことばで言う</span>
+            </button>
+            <div class="start-presets">
+              <button class="start-preset" type="button" data-preset="noun-naming">名詞呼称</button>
+              <button class="start-preset" type="button" data-preset="verb-naming">動作呼称</button>
+              <button class="start-preset" type="button" data-preset="scene-description">情景説明</button>
+            </div>
+          </div>
+          <div class="start-entry">
+            <button class="start-entry-head" type="button" data-start-mode="select" data-entry-title="選ぶ">
+              <span class="start-entry-name">選ぶ</span>
+              <span class="start-entry-desc">お題に合う絵をタップ</span>
+            </button>
+            <div class="start-presets">
+              <button class="start-preset" type="button" data-preset="read-select">文字を見て絵を選ぶ</button>
+              <button class="start-preset" type="button" data-preset="listen-select">単語を聞いて絵を選ぶ</button>
+              <button class="start-preset" type="button" data-preset="sentence-select">文を聞いて情景絵を選ぶ</button>
+            </div>
+          </div>
+          <div class="start-entry">
+            <button class="start-entry-head" type="button" data-start-mode="matching" data-entry-title="つなぐ">
+              <span class="start-entry-name">つなぐ</span>
+              <span class="start-entry-desc">ことばと絵を線で結ぶ</span>
+            </button>
+            <div class="start-presets">
+              <button class="start-preset" type="button" data-preset="matching-basic">文字と絵を線でつなぐ</button>
+            </div>
+          </div>
         </div>
 
-        <button id="btn-go-setup" class="btn btn-primary btn-large" type="button">はじめる</button>
         <p id="app-version" class="app-version"></p>
       </div>
     </section>
@@ -65,102 +84,17 @@
     <section id="screen-setup" class="screen">
       <header class="screen-header">
         <button id="btn-setup-back" class="btn btn-ghost btn-icon" type="button" aria-label="ホームに戻る">←</button>
-        <h2 class="screen-title">出題設定</h2>
+        <h2 id="setup-title" class="screen-title">出題設定</h2>
         <div class="spacer"></div>
       </header>
 
       <div class="setup-body">
+        <!-- 基本: いつも見える2項目 (総問題数・難易度)。ホームのプリセットで初期値が入る -->
         <section class="setup-section">
-          <h3 class="setup-section-title">課題の種類</h3>
-          <div class="mode-select">
-            <button class="mode-btn is-selected" type="button" data-mode="naming">
-              <span class="mode-btn-title">呼称</span>
-              <span class="mode-btn-desc">絵を見て ことばを言う</span>
-            </button>
-            <button class="mode-btn" type="button" data-mode="select">
-              <span class="mode-btn-title">選択</span>
-              <span class="mode-btn-desc">ことばに合う絵を選ぶ</span>
-            </button>
-            <button class="mode-btn" type="button" data-mode="matching">
-              <span class="mode-btn-title">線つなぎ</span>
-              <span class="mode-btn-desc">ことばと絵を線でつなぐ</span>
-            </button>
-          </div>
-          <div id="time-limit-row" class="option-row">
-            <span class="option-row-label">制限時間 <span class="hint">(時間切れで答えを表示)</span></span>
-            <div class="option-btns">
-              <button class="btn btn-mini is-selected" type="button" data-time-limit="0">なし</button>
-              <button class="btn btn-mini" type="button" data-time-limit="5">5秒</button>
-              <button class="btn btn-mini" type="button" data-time-limit="10">10秒</button>
-              <button class="btn btn-mini" type="button" data-time-limit="15">15秒</button>
-              <button class="btn btn-mini" type="button" data-time-limit="20">20秒</button>
-            </div>
-          </div>
-          <div id="prompt-type-row" class="option-row" hidden>
-            <span class="option-row-label">お題の出し方</span>
-            <div class="option-btns">
-              <button class="btn btn-mini is-selected" type="button" data-prompt-type="text">文字</button>
-              <button class="btn btn-mini" type="button" data-prompt-type="audio">音声のみ <span class="hint">(聴理解)</span></button>
-              <button class="btn btn-mini" type="button" data-prompt-type="both">文字＋音声</button>
-            </div>
-          </div>
-          <div id="choice-count-row" class="choice-count-row" hidden>
-            <div class="choice-count-header">
-              <span class="choice-count-label">選択肢の数</span>
-              <span class="choice-count-readout">
-                <output id="choice-count-value" class="choice-count-value">3</output>
-                <span class="choice-count-unit">枚</span>
-              </span>
-            </div>
-            <input id="choice-count-slider" type="range" min="1" max="12" value="3" />
-          </div>
-          <div id="pair-count-row" class="choice-count-row" hidden>
-            <div class="choice-count-header">
-              <span class="choice-count-label">組の数 <span class="hint">(1画面あたり)</span></span>
-              <span class="choice-count-readout">
-                <output id="pair-count-value" class="choice-count-value">3</output>
-                <span class="choice-count-unit">組</span>
-              </span>
-            </div>
-            <input id="pair-count-slider" type="range" min="2" max="5" value="3" />
-          </div>
-        </section>
-
-        <section class="setup-section">
-          <h3 class="setup-section-title">文字の種類 <span class="hint">(答え・お題の表示)</span></h3>
-          <div class="script-select">
-            <button class="btn btn-mini is-selected" type="button" data-script="default">標準</button>
-            <button class="btn btn-mini" type="button" data-script="hiragana">ひらがな</button>
-            <button class="btn btn-mini" type="button" data-script="katakana">カタカナ</button>
-            <button class="btn btn-mini" type="button" data-script="kanji">漢字</button>
-          </div>
-          <p class="script-note hint">漢字表記のない ことば (バナナ等) は標準のまま表示されます</p>
-        </section>
-
-        <section class="setup-section">
-          <h3 class="setup-section-title">カテゴリ <span class="hint">(複数選択可)</span></h3>
-          <div class="cat-actions">
-            <button class="btn btn-mini" type="button" data-cat-action="all">すべて選択</button>
-            <button class="btn btn-mini" type="button" data-cat-action="core">基本のみ</button>
-            <button class="btn btn-mini" type="button" data-cat-action="clear">クリア</button>
-          </div>
-          <div id="cat-list" class="checkbox-grid"></div>
-        </section>
-
-        <section class="setup-section">
-          <h3 class="setup-section-title">
-            問題数と出題割合
-            <span class="hint">(親密度ごとに問題数を指定)</span>
-          </h3>
-          <div class="fam-actions">
-            <button class="btn btn-mini" type="button" data-fam-preset="easy">やさしい中心</button>
-            <button class="btn btn-mini" type="button" data-fam-preset="balanced">バランス</button>
-            <button class="btn btn-mini" type="button" data-fam-preset="hard">むずかしめ</button>
-            <button class="btn btn-mini" type="button" data-fam-preset="clear">クリア</button>
-          </div>
+          <h3 class="setup-section-title">総問題数</h3>
           <div class="fam-slider fam-slider--total">
             <div class="fam-slider-header">
-              <span class="fam-slider-name fam-slider-name--total">総問題数</span>
+              <span class="fam-slider-name fam-slider-name--total">出題する語の数</span>
               <span class="fam-slider-readout">
                 <output id="count-total-slider-value" class="fam-slider-value fam-slider-value--total">10</output>
                 <span class="fam-slider-unit">問</span>
@@ -169,7 +103,106 @@
             </div>
             <input id="count-total-slider" type="range" min="0" max="0" value="10" />
           </div>
-          <div class="fam-breakdown-label">内訳 <span class="hint">(比率を変えたい時に個別調整)</span></div>
+        </section>
+
+        <section class="setup-section">
+          <h3 class="setup-section-title">難易度 <span class="hint">(親密度の配分)</span></h3>
+          <div class="fam-actions">
+            <button class="btn btn-mini" type="button" data-fam-preset="easy">やさしい中心</button>
+            <button class="btn btn-mini" type="button" data-fam-preset="balanced">バランス</button>
+            <button class="btn btn-mini" type="button" data-fam-preset="hard">むずかしめ</button>
+            <button class="btn btn-mini" type="button" data-fam-preset="clear">クリア</button>
+          </div>
+        </section>
+
+        <!-- 詳細: 折りたたみ。閉じていても現在値を1行で表示する -->
+        <section id="setup-detail" class="setup-section setup-detail">
+          <button id="detail-toggle" class="detail-toggle" type="button" aria-expanded="false" aria-controls="detail-body">
+            <span class="detail-chev" aria-hidden="true">▶</span>
+            <span class="detail-text">
+              <span class="detail-title">詳細設定</span>
+              <span id="detail-summary" class="detail-summary"></span>
+            </span>
+          </button>
+          <div id="detail-body" class="detail-body" hidden>
+            <div class="detail-group">
+              <h3 class="setup-section-title">課題の種類</h3>
+              <div class="mode-select">
+                <button class="mode-btn is-selected" type="button" data-mode="naming">
+                  <span class="mode-btn-title">話す</span>
+                  <span class="mode-btn-desc">絵を見て ことばで言う</span>
+                </button>
+                <button class="mode-btn" type="button" data-mode="select">
+                  <span class="mode-btn-title">選ぶ</span>
+                  <span class="mode-btn-desc">お題に合う絵をタップ</span>
+                </button>
+                <button class="mode-btn" type="button" data-mode="matching">
+                  <span class="mode-btn-title">つなぐ</span>
+                  <span class="mode-btn-desc">ことばと絵を線で結ぶ</span>
+                </button>
+              </div>
+              <div id="time-limit-row" class="choice-count-row">
+                <div class="choice-count-header">
+                  <span class="choice-count-label">制限時間 <span class="hint">(時間切れで答えを表示)</span></span>
+                  <span class="choice-count-readout">
+                    <output id="time-limit-value" class="choice-count-value">なし</output>
+                  </span>
+                </div>
+                <input id="time-limit-slider" type="range" min="0" max="30" value="0" />
+              </div>
+              <div id="prompt-type-row" class="option-row" hidden>
+                <span class="option-row-label">お題の出し方</span>
+                <div class="option-btns">
+                  <button class="btn btn-mini is-selected" type="button" data-prompt-type="text">文字</button>
+                  <button class="btn btn-mini" type="button" data-prompt-type="audio">音声のみ <span class="hint">(聴理解)</span></button>
+                  <button class="btn btn-mini" type="button" data-prompt-type="both">文字＋音声</button>
+                </div>
+              </div>
+              <div id="choice-count-row" class="choice-count-row" hidden>
+                <div class="choice-count-header">
+                  <span class="choice-count-label">選択肢の数</span>
+                  <span class="choice-count-readout">
+                    <output id="choice-count-value" class="choice-count-value">3</output>
+                    <span class="choice-count-unit">枚</span>
+                  </span>
+                </div>
+                <input id="choice-count-slider" type="range" min="1" max="12" value="3" />
+              </div>
+              <div id="pair-count-row" class="choice-count-row" hidden>
+                <div class="choice-count-header">
+                  <span class="choice-count-label">組の数 <span class="hint">(1画面あたり)</span></span>
+                  <span class="choice-count-readout">
+                    <output id="pair-count-value" class="choice-count-value">3</output>
+                    <span class="choice-count-unit">組</span>
+                  </span>
+                </div>
+                <input id="pair-count-slider" type="range" min="2" max="5" value="3" />
+              </div>
+            </div>
+
+            <div class="detail-group">
+              <h3 class="setup-section-title">文字の種類 <span class="hint">(答え・お題の表示)</span></h3>
+              <div class="script-select">
+                <button class="btn btn-mini is-selected" type="button" data-script="default">標準</button>
+                <button class="btn btn-mini" type="button" data-script="hiragana">ひらがな</button>
+                <button class="btn btn-mini" type="button" data-script="katakana">カタカナ</button>
+                <button class="btn btn-mini" type="button" data-script="kanji">漢字</button>
+              </div>
+              <p class="script-note hint">漢字表記のない ことば (バナナ等) は標準のまま表示されます</p>
+            </div>
+
+            <div class="detail-group">
+              <h3 class="setup-section-title">カテゴリ <span class="hint">(複数選択可)</span></h3>
+              <div class="cat-actions">
+                <button class="btn btn-mini" type="button" data-cat-action="all">すべて選択</button>
+                <button class="btn btn-mini" type="button" data-cat-action="core">基本のみ</button>
+                <button class="btn btn-mini" type="button" data-cat-action="clear">クリア</button>
+              </div>
+              <div id="cat-list" class="checkbox-grid"></div>
+            </div>
+
+            <div class="detail-group">
+              <h3 class="setup-section-title">内訳 <span class="hint">(親密度ごとの問題数を個別に調整)</span></h3>
           <div class="fam-slider-list">
             <div class="fam-slider" data-fam="high">
               <div class="fam-slider-header">
@@ -205,15 +238,17 @@
               <input id="count-low" type="range" min="0" max="0" value="2" />
             </div>
           </div>
-        </section>
+            </div>
 
-        <section class="setup-section">
-          <h3 class="setup-section-title">出題順</h3>
-          <label class="toggle">
-            <input id="shuffle-toggle" type="checkbox" checked />
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            <span class="toggle-label">ランダムに出題する</span>
-          </label>
+            <div class="detail-group">
+              <h3 class="setup-section-title">出題順</h3>
+              <label class="toggle">
+                <input id="shuffle-toggle" type="checkbox" checked />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                <span class="toggle-label">ランダムに出題する</span>
+              </label>
+            </div>
+          </div>
         </section>
 
         <div class="setup-summary">
@@ -258,6 +293,12 @@
           <div id="judge-row" class="judge-row" hidden>
             <button id="btn-judge-ok" class="judge-btn judge-ok" type="button">○ 言えた</button>
             <button id="btn-judge-ng" class="judge-btn judge-ng" type="button">× 言えなかった</button>
+          </div>
+          <!-- 情景説明は ○/× ではなく3段階 (模範文の表示とは連動しない) -->
+          <div id="judge3-row" class="judge-row" hidden>
+            <button id="btn-judge-indep" class="judge-btn judge-indep" type="button">自立</button>
+            <button id="btn-judge-cue" class="judge-btn judge-cue" type="button">手がかりあり</button>
+            <button id="btn-judge-hard" class="judge-btn judge-hard" type="button">困難</button>
           </div>
         </div>
 
