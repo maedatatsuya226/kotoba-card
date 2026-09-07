@@ -4,6 +4,32 @@
 
 このファイルは別のPCや次のセッションで作業を再開する時、まず読むためのもの。完了したら該当項目を削除する。
 
+## ⚠️ 今は `next` ブランチで作業中(本番にはまだ出さない)
+
+v32〜v33(短文理解のレベル分け・情景絵30枚)は **`next` ブランチ**にある。本番(Cloudflare Pages)は `main` だけを配信するので、`main` にプッシュするまでアプリには反映されない。**音声を揃えて確認するまで `main` にはマージしない。**
+
+### Mac でやること(音声生成)
+
+```sh
+git fetch origin
+git checkout next            # main ではなく next
+node scripts/generate-audio.mjs   # VOICEVOX 起動中に。未生成の 36 件だけ作られる
+git add audio
+git commit -m "Add audio for level-graded scene cards"
+git push origin next         # ← main に push しないこと
+```
+
+- 対象 36 件 = 受動文 6(既存の絵を流用)+ 新しい情景文 30。すべて `tts_text`(漢字文)で合成される
+- 文が長いので、試聴して区切り・アクセントが不自然な文は `TTS_PARAM_OVERRIDES` / `TTS_OVERRIDES` で調整して該当 wav を削除→再実行
+- 終わったら Windows 側で `next` を確認し、`main` にマージしてプッシュ(その時点で本番に配信)
+
+### Windows 側で最後にやること
+
+```sh
+git fetch origin && git checkout main && git merge --ff-only origin/next
+# APP_VERSION / CACHE_NAME を上げてコミット → git push origin main
+```
+
 ## 進行中: スタッフFB第2弾への対応
 
 FB原文は `~/Downloads/ことばカードFB第２弾.doc`(リポジトリ外)。3項目に整理して順に対応する。
