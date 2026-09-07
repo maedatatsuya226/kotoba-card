@@ -26,6 +26,15 @@ FB原文は `~/Downloads/ことばカードFB第２弾.doc`(リポジトリ外)�
 - 終了画面の集計・復習は選択と共通(`firstTry` / `missed`)。情景カードは対象外
 - [ ] iPad 実機で確認(チップの押しやすさ、誤答後のリセットの間)。ST の使用感を聞く
 
+### 3b. 関係節レベルの作り直し — **画像18枚の生成待ち**
+
+スタッフ指摘: 関係節は「主節の状態にあるのは誰か」で対にならないと意味がない(傘 走る/立つ、ボール 笑う/泣く は単文扱いに変更済み)。10組に増やす。
+
+- 生成リスト: `data/pending/scene-relative.json`(9組18枚)。指示文はガイド §11.2
+- [ ] Codex で生成 → `node scripts/optimize-images.mjs images/scene` → `node scripts/merge-pending.mjs`
+- [ ] Mac で音声18件 → `next` 経由で受け渡し(前回と同じ)
+- [ ] バージョンを上げてプッシュ。関係節レベルで「〜しているのは誰か」が絵で迷わないか ST に確認
+
 ### 3. 短文理解のレベル分け — 完了(v33)
 
 - 情景カードに `level`(simple 単文 / semantic 意味 / reversible 語順 / particle 助詞 / relative 関係節)。詳細設定「文のレベル」で絞り込み(情景を選んでいる時だけ表示)
