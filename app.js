@@ -19,6 +19,8 @@
     promptType: 'text',
     // 選択モード: 正解をタップした時にお題を読み上げるか (文の課題では切りたいことがある)
     correctAudio: true,
+    // 選択モード: 間違えた時の音声。'prompt' = お題をもう一度 / 'chosen' = 選んだ絵のことば(訂正) / 'none'
+    wrongAudio: 'prompt',
     // 呼称モードの制限時間 (秒)。0 = なし
     timeLimit: 0,
     // ならべるモード: ダミー文字の数 / 文字数(空欄)を見せるか / 出題する語の最小文字数 (0 = すべて)
@@ -48,7 +50,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v34';
+  const APP_VERSION = 'v35';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -66,9 +68,9 @@
     'noun-naming':       { title: '名詞呼称',           mode: 'naming',   categories: 'core',        total: 10, fam: 'balanced' },
     'verb-naming':       { title: '動作呼称',           mode: 'naming',   categories: ['action'],    total: 10, fam: 'balanced' },
     'scene-description': { title: '情景説明',           mode: 'naming',   categories: ['scene'],     total: 8,  fam: 'balanced', sentenceLevel: 'all' },
-    'read-select':       { title: '文字を見て絵を選ぶ', mode: 'select',   categories: 'core+action', total: 10, fam: 'balanced', promptType: 'text',  choiceCount: 3 },
-    'listen-select':     { title: '単語を聞いて絵を選ぶ', mode: 'select', categories: 'core+action', total: 10, fam: 'balanced', promptType: 'audio', choiceCount: 3 },
-    'sentence-select':   { title: '文を聞いて情景絵を選ぶ', mode: 'select', categories: ['scene'],   total: 8,  fam: 'balanced', promptType: 'audio', choiceCount: 2, sentenceLevel: 'all' },
+    'read-select':       { title: '文字を見て絵を選ぶ', mode: 'select',   categories: 'core+action', total: 10, fam: 'balanced', promptType: 'text',  choiceCount: 3, wrongAudio: 'none' },
+    'listen-select':     { title: '単語を聞いて絵を選ぶ', mode: 'select', categories: 'core+action', total: 10, fam: 'balanced', promptType: 'audio', choiceCount: 3, wrongAudio: 'prompt' },
+    'sentence-select':   { title: '文を聞いて情景絵を選ぶ', mode: 'select', categories: ['scene'],   total: 8,  fam: 'balanced', promptType: 'audio', choiceCount: 2, sentenceLevel: 'all', wrongAudio: 'chosen' },
     'matching-basic':    { title: '文字と絵を線でつなぐ', mode: 'matching', categories: 'core+action', total: 9, fam: 'balanced', pairCount: 3 },
     'kana-spell':        { title: '文字チップ (文字数あり)', mode: 'spell', categories: 'core', total: 10, fam: 'balanced', dummyCount: 2, lengthHint: true,  minLength: 0 },
     'kana-spell-free':   { title: '文字チップ (文字数なし)', mode: 'spell', categories: 'core', total: 10, fam: 'balanced', dummyCount: 2, lengthHint: false, minLength: 0 },
@@ -296,8 +298,9 @@
     ];
     if (state.mode === 'naming') parts.push(`制限時間: ${state.timeLimit ? `${state.timeLimit}秒` : 'なし'}`);
     if (state.mode === 'select') {
+      const WRONG_LABEL = { prompt: 'お題をもう一度', chosen: '選んだ絵のことば', none: 'なし' };
       parts.push(`お題: ${PROMPT_LABEL[state.promptType]}`, `選択肢: ${state.choiceCount}枚`,
-        `正解の音声: ${state.correctAudio ? '流す' : '流さない'}`);
+        `間違えた時: ${WRONG_LABEL[state.wrongAudio]}`, `正解の音声: ${state.correctAudio ? '流す' : '流さない'}`);
     }
     if (state.mode === 'matching') parts.push(`組: ${state.pairCount}`);
     if (state.mode === 'spell') {
@@ -377,6 +380,10 @@
       const b = $(`[data-sentence-level="${p.sentenceLevel}"]`);
       if (b) b.click();
     }
+    if (p.wrongAudio) {
+      const b = $(`[data-wrong-audio="${p.wrongAudio}"]`);
+      if (b) b.click();
+    }
     // 親密度: 配分プリセットを利用可能数でクランプしてから総数に合わせる
     const avail = getAvailableByFamiliarity();
     FAM_KEYS.forEach((fam) => {
@@ -396,6 +403,7 @@
         });
         $('#time-limit-row').hidden = state.mode !== 'naming';
         $('#prompt-type-row').hidden = state.mode !== 'select';
+        $('#wrong-audio-row').hidden = state.mode !== 'select';
         $('#correct-audio-row').hidden = state.mode !== 'select';
         $('#choice-count-row').hidden = state.mode !== 'select';
         $('#pair-count-row').hidden = state.mode !== 'matching';
@@ -426,6 +434,7 @@
     };
     bindOptionGroup('data-prompt-type', (v) => { state.promptType = v; });
     bindOptionGroup('data-correct-audio', (v) => { state.correctAudio = v === '1'; });
+    bindOptionGroup('data-wrong-audio', (v) => { state.wrongAudio = v; });
     bindOptionGroup('data-length-hint', (v) => { state.lengthHint = v === '1'; });
     bindOptionGroup('data-min-length', (v) => { state.minLength = parseInt(v, 10) || 0; updateSummary(); });
     bindOptionGroup('data-sentence-level', (v) => { state.sentenceLevel = v; updateSummary(); });
@@ -801,12 +810,13 @@
           btn.classList.add('is-wrong');
           state.session.wrongTaps++;
           state.session.missed.add(target.id);
-          // お題を音声で出している時は、間違えたら少し間を置いてもう一度聞かせる
-          // (聴理解ではお題が画面に残っていないので、聞き直して選び直せるように)
-          if (state.promptType !== 'text') {
+          // 間違えた時の音声: お題をもう一度 (聞き直して選び直す) /
+          // 選んだ絵のことば (「誰が誰に」の違いを対比させる訂正フィードバック) / なし
+          const say = state.wrongAudio === 'prompt' ? target : state.wrongAudio === 'chosen' ? choice : null;
+          if (say) {
             setTimeout(() => {
-              if (!state.answerShown && state.queue[state.index] === target) speak(target);
-            }, 500);
+              if (!state.answerShown && state.queue[state.index] === target) speak(say);
+            }, 400);
           }
         }
       });
