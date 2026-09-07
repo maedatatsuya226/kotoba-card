@@ -44,7 +44,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v30';
+  const APP_VERSION = 'v31';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -865,6 +865,7 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'spell-chip';
+      if (unit.length > 1) btn.classList.add('is-digraph');
       btn.textContent = spellDisplay(unit);
       const chip = { unit, el: btn, used: false };
       btn.addEventListener('click', () => {
@@ -899,6 +900,7 @@
       if (chip) {
         slot.textContent = spellDisplay(chip.unit);
         slot.classList.add('is-filled');
+        if (chip.unit.length > 1) slot.classList.add('is-digraph');
       }
       slotsEl.appendChild(slot);
     }

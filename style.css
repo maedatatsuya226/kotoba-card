@@ -990,8 +990,9 @@ body {
   flex-shrink: 0;
 }
 .spell-slot {
-  width: 58px;
+  min-width: 58px;
   height: 64px;
+  padding: 0 8px;
   border-radius: 12px;
   border: 2px dashed #cbd5e1;
   background: #f8fafc;
@@ -1000,7 +1001,11 @@ body {
   font-size: 30px;
   font-weight: 700;
   color: #0f172a;
+  white-space: nowrap;
 }
+/* 拗音 (きゅ・しゃ 等) は2文字ぶん: 少し小さい字で詰めて収める */
+.spell-slot.is-digraph,
+.spell-chip.is-digraph { font-size: 26px; letter-spacing: -0.06em; }
 .spell-slot.is-filled { border-style: solid; border-color: var(--color-primary); background: white; }
 .spell-slots.is-correct .spell-slot { border-color: #16a34a; background: #dcfce7; color: #15803d; }
 .spell-slots.is-wrong .spell-slot.is-filled { animation: match-wrong 0.5s ease; }
@@ -1019,8 +1024,10 @@ body {
   appearance: none;
   cursor: pointer;
   font-family: inherit;
-  width: 64px;
+  min-width: 64px;
   height: 64px;
+  padding: 0 10px;
+  white-space: nowrap;
   border-radius: 14px;
   border: 3px solid var(--color-border);
   background: white;
