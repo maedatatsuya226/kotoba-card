@@ -300,6 +300,17 @@
             <button id="btn-judge-cue" class="judge-btn judge-cue" type="button">手がかりあり</button>
             <button id="btn-judge-hard" class="judge-btn judge-hard" type="button">困難</button>
           </div>
+          <!-- × を付けた時だけ出る、誤りの種類の記録 (任意) -->
+          <div id="error-type-row" class="error-type-row" hidden>
+            <span class="error-type-label">誤りの種類 <span class="hint">(任意)</span></span>
+            <div class="option-btns">
+              <button class="btn btn-mini" type="button" data-error-type="anomia">喚語困難</button>
+              <button class="btn btn-mini" type="button" data-error-type="neologism">新造語</button>
+              <button class="btn btn-mini" type="button" data-error-type="semantic">語性錯語</button>
+              <button class="btn btn-mini" type="button" data-error-type="phonemic">音韻性錯語</button>
+              <button class="btn btn-mini" type="button" data-error-type="perseveration">保続</button>
+            </div>
+          </div>
         </div>
 
         <!-- 選択モード: ことばを提示し、合う絵カードを選んでもらう -->
@@ -340,6 +351,8 @@
         <p class="end-sub"><span id="end-count">0</span>問完了しました</p>
         <!-- 正答率 (セッション内のみ。保存はしない) -->
         <div id="end-results" class="end-results" hidden></div>
+        <!-- 間違えた語の一覧・復習ボタン・文字数別/カテゴリ別の内訳 -->
+        <div id="end-extras" class="end-extras" hidden></div>
         <div class="end-buttons">
           <button id="btn-again" class="btn btn-primary btn-large" type="button">もう一度</button>
           <button id="btn-home" class="btn btn-ghost btn-large" type="button">ホームに戻る</button>

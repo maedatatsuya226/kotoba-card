@@ -26,6 +26,8 @@
       hintUsed: [],    // 呼称: index → ヒントを使ったら true
       timedOut: [],    // 呼称: index → 時間切れなら true
       wrongTaps: 0,    // 選択・線つなぎ: 誤答タップの総数
+      errorTypes: [],  // 呼称: index → 誤りの種類 (× の時に任意で記録)
+      missed: new Set(), // 選択・線つなぎ: 誤答に関わったカードid (復習用)
     },
     queue: [],
     // 選択モード: 出題ごとの選択肢カード配列 (queue と同じ並び)
@@ -38,7 +40,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v28';
+  const APP_VERSION = 'v29';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -62,6 +64,10 @@
     'matching-basic':    { title: '文字と絵を線でつなぐ', mode: 'matching', categories: 'core+action', total: 9, fam: 'balanced', pairCount: 3 },
   };
   const MODE_LABEL = { naming: '話す', select: '選ぶ', matching: 'つなぐ' };
+  const ERROR_TYPE_LABEL = {
+    anomia: '喚語困難', neologism: '新造語', semantic: '語性錯語',
+    phonemic: '音韻性錯語', perseveration: '保続',
+  };
   const SCRIPT_LABEL = { default: '標準', hiragana: 'ひらがな', katakana: 'カタカナ', kanji: '漢字' };
   const PROMPT_LABEL = { text: '文字', audio: '音声のみ', both: '文字＋音声' };
 
@@ -484,10 +490,19 @@
     if (picks.length === 0) return;
 
     // 全体をシャッフル (シャッフルOFFなら high→mid→low 順で出題)
-    state.queue = state.shuffle ? shuffleArray(picks) : picks;
+    beginSession(state.shuffle ? shuffleArray(picks) : picks);
+  }
+
+  // 出題する語の並びを受け取ってセッションを開始する。
+  // 通常の開始 (startQuiz) と「間違えた語で もう一度」の両方から使う
+  function beginSession(queue) {
+    state.queue = queue;
     state.index = 0;
     state.answerShown = false;
-    state.session = { judgments: [], firstTry: [], hintUsed: [], timedOut: [], wrongTaps: 0 };
+    state.session = {
+      judgments: [], firstTry: [], hintUsed: [], timedOut: [], wrongTaps: 0,
+      errorTypes: [], missed: new Set(),
+    };
     preloadedSrcs.clear();
 
     // 選択モード: 各問題の選択肢(正解+ディストラクタ)を先に決めておく
@@ -698,6 +713,7 @@
         } else {
           btn.classList.add('is-wrong');
           state.session.wrongTaps++;
+          state.session.missed.add(target.id);
         }
       });
 
@@ -819,7 +835,9 @@
       setMatchPending(null);
       matchState.connections.push({ wordEl: word.el, picEl: pic.el });
       // この組に誤答が絡んでいなければ一発正解
-      state.session.firstTry.push(!matchState.wrongIds.has(word.card.id));
+      const firstTry = !matchState.wrongIds.has(word.card.id);
+      state.session.firstTry.push(firstTry);
+      if (!firstTry) state.session.missed.add(word.card.id);
       redrawMatchLines();
       speak(word.card);
       if (matchState.items.every((it) => it.done)) {
@@ -1056,6 +1074,106 @@
     $('#btn-judge-indep').classList.toggle('is-selected', j === 'indep');
     $('#btn-judge-cue').classList.toggle('is-selected', j === 'cue');
     $('#btn-judge-hard').classList.toggle('is-selected', j === 'hard');
+    // 誤りの種類は × の時だけ記録できる
+    $('#error-type-row').hidden = j !== false;
+    const t = state.session.errorTypes[state.index];
+    $$('[data-error-type]').forEach((b) => {
+      b.classList.toggle('is-selected', b.dataset.errorType === t);
+    });
+  }
+
+  function setErrorType(type) {
+    const current = state.session.errorTypes[state.index];
+    state.session.errorTypes[state.index] = current === type ? undefined : type;
+    renderJudgeButtons();
+  }
+
+  // ---- 終了画面の付加情報: 間違えた語・復習・文字数別/カテゴリ別の内訳 ----
+  // 「間違えた語」: 呼称は ×/困難/手がかりあり、選択・線つなぎは誤答に関わった語
+  function missedCards() {
+    const s = state.session;
+    if (state.mode === 'naming') {
+      return state.queue.filter((c, i) => {
+        const j = s.judgments[i];
+        return j === false || j === 'hard' || j === 'cue';
+      });
+    }
+    return state.queue.filter((c) => s.missed.has(c.id));
+  }
+
+  // 分析用: 語ごとの正否 (評価されたものだけ)。情景は文なので対象外
+  function scoredEntries() {
+    const s = state.session;
+    const entries = [];
+    state.queue.forEach((card, i) => {
+      if (card.type === 'scene') return;
+      let ok;
+      if (state.mode === 'naming') {
+        if (s.judgments[i] !== true && s.judgments[i] !== false) return;
+        ok = s.judgments[i] === true;
+      } else if (state.mode === 'select') {
+        if (s.firstTry[i] === undefined) return;
+        ok = s.firstTry[i] === true;
+      } else {
+        ok = !s.missed.has(card.id);
+      }
+      entries.push({ card, ok });
+    });
+    return entries;
+  }
+
+  function groupRate(entries, keyFn, sortKeys) {
+    const groups = new Map();
+    entries.forEach(({ card, ok }) => {
+      const k = keyFn(card);
+      const g = groups.get(k) || { ok: 0, total: 0 };
+      g.total++;
+      if (ok) g.ok++;
+      groups.set(k, g);
+    });
+    return sortKeys(Array.from(groups.entries()));
+  }
+
+  function renderEndExtras() {
+    const box = $('#end-extras');
+    const missed = missedCards();
+    const entries = scoredEntries();
+    let html = '';
+
+    if (missed.length > 0) {
+      const items = missed.map((c) => {
+        const i = state.queue.indexOf(c);
+        const t = state.mode === 'naming' ? state.session.errorTypes[i] : undefined;
+        return `<li>${displayLabel(c)}${t ? `<small>${ERROR_TYPE_LABEL[t]}</small>` : ''}</li>`;
+      }).join('');
+      html += `<div class="end-block"><h3 class="end-block-title">間違えた ことば (${missed.length})</h3>` +
+              `<ul class="end-missed-list">${items}</ul>` +
+              `<button class="btn btn-secondary btn-large" type="button" data-retry>間違えた語で もう一度</button></div>`;
+    }
+
+    if (entries.length >= 2) {
+      const catLabel = (id) => (state.categories.find((c) => c.id === id) || { label: id }).label;
+      const byMora = groupRate(entries, (c) => getCharUnits(c.reading).length, (a) => a.sort((x, y) => x[0] - y[0]));
+      const byCat = groupRate(entries, (c) => c.category, (a) => a.sort((x, y) => y[1].total - x[1].total));
+      const row = (label, groups, fmtKey) =>
+        `<p class="end-analysis-row"><span class="k">${label}</span>` +
+        groups.map(([k, g]) => {
+          const low = g.ok < g.total;
+          return `<span class="v${low ? ' is-low' : ''}">${fmtKey(k)} ${g.ok}/${g.total}</span>`;
+        }).join('') + '</p>';
+      html += `<div class="end-block"><h3 class="end-block-title">内訳 <span class="hint">(正答 / 出題)</span></h3>` +
+              row('文字数', byMora, (k) => `${k}文字`) +
+              row('カテゴリ', byCat, catLabel) + '</div>';
+    }
+
+    box.innerHTML = html;
+    box.hidden = !html;
+  }
+
+  function retryMissed() {
+    const cards = missedCards();
+    if (cards.length === 0) return;
+    beginSession(state.shuffle ? shuffleArray(cards) : cards);
   }
 
   function nextCard() {
@@ -1073,6 +1191,7 @@
     stopSpeak();
     $('#end-count').textContent = state.queue.length;
     renderEndResults();
+    renderEndExtras();
     showScreen('screen-end');
   }
 
@@ -1276,6 +1395,13 @@
     $('#btn-judge-indep').addEventListener('click', () => setJudgment('indep'));
     $('#btn-judge-cue').addEventListener('click', () => setJudgment('cue'));
     $('#btn-judge-hard').addEventListener('click', () => setJudgment('hard'));
+    $$('[data-error-type]').forEach((b) => {
+      b.addEventListener('click', () => setErrorType(b.dataset.errorType));
+    });
+    // 終了画面の「間違えた語で もう一度」(中身は毎回生成するので委譲で受ける)
+    $('#end-extras').addEventListener('click', (e) => {
+      if (e.target.closest('[data-retry]')) retryMissed();
+    });
     $('#btn-next').addEventListener('click', nextCard);
     $('#btn-quiz-quit').addEventListener('click', () => {
       if (confirm('セッションを中断しますか?')) {

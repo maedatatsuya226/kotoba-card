@@ -795,6 +795,15 @@ body {
 }
 .judge-ok.is-selected { background: #dcfce7; border-color: #16a34a; color: #15803d; }
 .judge-ng.is-selected { background: #fee2e2; border-color: #dc2626; color: #b91c1c; }
+/* 誤りの種類 (× の後に任意で記録) */
+.error-type-row {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+}
+.error-type-label { font-size: 13px; font-weight: 600; color: #334155; }
+.error-type-row .option-btns .btn-mini { font-size: 13px; padding: 7px 12px; min-height: 36px; }
+
 /* 情景説明の3段階 */
 .judge-indep.is-selected { background: #dcfce7; border-color: #16a34a; color: #15803d; }
 .judge-cue.is-selected { background: #fef3c7; border-color: #b45309; color: #92400e; }
@@ -1131,6 +1140,59 @@ body {
   font-size: 12px;
   color: var(--color-muted);
 }
+
+/* 終了画面: 間違えた語・復習・内訳 */
+.end-extras {
+  width: 100%;
+  max-width: 420px;
+  display: grid;
+  gap: 12px;
+  margin-bottom: 8px;
+  text-align: left;
+}
+.end-block {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 18px 16px;
+}
+.end-block-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.end-missed-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.end-missed-list li {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.end-missed-list li small { font-weight: 400; color: #b91c1c; margin-left: 4px; }
+.end-analysis-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 13px;
+  color: #334155;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.end-analysis-row + .end-analysis-row { margin-top: 8px; }
+.end-analysis-row .k { color: var(--color-muted); }
+.end-analysis-row .v.is-low { color: #b91c1c; font-weight: 700; }
 
 /* ===== Tablet & desktop ===== */
 @media (min-width: 720px) {
