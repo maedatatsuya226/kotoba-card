@@ -31,6 +31,7 @@ async function optimize(file) {
   const before = input.length;
   const out = await sharp(input)
     .resize(MAX_SIZE, MAX_SIZE, { fit: 'inside', withoutEnlargement: true })
+    .flatten({ background: '#ffffff' })
     .png({ palette: true, quality: 90, compressionLevel: 9 })
     .toBuffer();
   await writeFile(file, out);
