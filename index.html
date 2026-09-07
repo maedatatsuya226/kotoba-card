@@ -74,6 +74,16 @@
               <button class="start-preset" type="button" data-preset="matching-basic">文字と絵を線でつなぐ</button>
             </div>
           </div>
+          <div class="start-entry">
+            <button class="start-entry-head" type="button" data-start-mode="spell" data-entry-title="ならべる">
+              <span class="start-entry-name">ならべる</span>
+              <span class="start-entry-desc">文字チップで ことばを作る</span>
+            </button>
+            <div class="start-presets">
+              <button class="start-preset" type="button" data-preset="kana-spell">文字チップ (文字数あり)</button>
+              <button class="start-preset" type="button" data-preset="kana-spell-free">文字チップ (文字数なし)</button>
+            </div>
+          </div>
         </div>
 
         <p id="app-version" class="app-version"></p>
@@ -140,6 +150,36 @@
                   <span class="mode-btn-title">つなぐ</span>
                   <span class="mode-btn-desc">ことばと絵を線で結ぶ</span>
                 </button>
+                <button class="mode-btn" type="button" data-mode="spell">
+                  <span class="mode-btn-title">ならべる</span>
+                  <span class="mode-btn-desc">文字チップで ことばを作る</span>
+                </button>
+              </div>
+              <!-- ならべる: 難易度 -->
+              <div id="dummy-count-row" class="choice-count-row" hidden>
+                <div class="choice-count-header">
+                  <span class="choice-count-label">ダミーの文字 <span class="hint">(正解の文字に混ぜる数)</span></span>
+                  <span class="choice-count-readout">
+                    <output id="dummy-count-value" class="choice-count-value">2</output>
+                    <span class="choice-count-unit">枚</span>
+                  </span>
+                </div>
+                <input id="dummy-count-slider" type="range" min="1" max="4" value="2" />
+              </div>
+              <div id="length-hint-row" class="option-row" hidden>
+                <span class="option-row-label">文字数の提示</span>
+                <div class="option-btns">
+                  <button class="btn btn-mini is-selected" type="button" data-length-hint="1">見せる <span class="hint">(空欄が並ぶ)</span></button>
+                  <button class="btn btn-mini" type="button" data-length-hint="0">見せない</button>
+                </div>
+              </div>
+              <div id="min-length-row" class="option-row" hidden>
+                <span class="option-row-label">語の長さ</span>
+                <div class="option-btns">
+                  <button class="btn btn-mini is-selected" type="button" data-min-length="0">すべて</button>
+                  <button class="btn btn-mini" type="button" data-min-length="3">3文字以上</button>
+                  <button class="btn btn-mini" type="button" data-min-length="4">4文字以上</button>
+                </div>
               </div>
               <div id="time-limit-row" class="choice-count-row">
                 <div class="choice-count-header">
@@ -322,6 +362,17 @@
             </button>
           </div>
           <div id="choice-grid" class="choice-grid"></div>
+        </div>
+
+        <!-- ならべるモード: 絵を見て、かなチップを順にタップして ことばを作る -->
+        <div id="spell-area" class="spell-area" hidden>
+          <div class="spell-image"><img id="spell-image" alt="" /></div>
+          <div id="spell-slots" class="spell-slots" aria-live="polite"></div>
+          <div id="spell-chips" class="spell-chips"></div>
+          <div class="spell-actions">
+            <button id="btn-spell-undo" class="btn btn-secondary" type="button">1文字もどす</button>
+            <button id="btn-spell-check" class="btn btn-secondary" type="button" hidden>できた</button>
+          </div>
         </div>
 
         <!-- 線つなぎモード: ことばと絵カードを線でつなぐ -->

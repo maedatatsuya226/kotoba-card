@@ -19,6 +19,10 @@
     promptType: 'text',
     // 呼称モードの制限時間 (秒)。0 = なし
     timeLimit: 0,
+    // ならべるモード: ダミー文字の数 / 文字数(空欄)を見せるか / 出題する語の最小文字数 (0 = すべて)
+    dummyCount: 2,
+    lengthHint: true,
+    minLength: 0,
     // セッション内の記録 (終了画面の正答率用。保存はしない)
     session: {
       judgments: [],   // 呼称: index → true(○) / false(×) / undefined(未評価)
@@ -40,7 +44,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v29';
+  const APP_VERSION = 'v30';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -62,8 +66,10 @@
     'listen-select':     { title: '単語を聞いて絵を選ぶ', mode: 'select', categories: 'core+action', total: 10, fam: 'balanced', promptType: 'audio', choiceCount: 3 },
     'sentence-select':   { title: '文を聞いて情景絵を選ぶ', mode: 'select', categories: ['scene'],   total: 8,  fam: 'balanced', promptType: 'audio', choiceCount: 2 },
     'matching-basic':    { title: '文字と絵を線でつなぐ', mode: 'matching', categories: 'core+action', total: 9, fam: 'balanced', pairCount: 3 },
+    'kana-spell':        { title: '文字チップ (文字数あり)', mode: 'spell', categories: 'core', total: 10, fam: 'balanced', dummyCount: 2, lengthHint: true,  minLength: 0 },
+    'kana-spell-free':   { title: '文字チップ (文字数なし)', mode: 'spell', categories: 'core', total: 10, fam: 'balanced', dummyCount: 2, lengthHint: false, minLength: 0 },
   };
-  const MODE_LABEL = { naming: '話す', select: '選ぶ', matching: 'つなぐ' };
+  const MODE_LABEL = { naming: '話す', select: '選ぶ', matching: 'つなぐ', spell: 'ならべる' };
   const ERROR_TYPE_LABEL = {
     anomia: '喚語困難', neologism: '新造語', semantic: '語性錯語',
     phonemic: '音韻性錯語', perseveration: '保続',
@@ -276,6 +282,10 @@
     if (state.mode === 'naming') parts.push(`制限時間: ${state.timeLimit ? `${state.timeLimit}秒` : 'なし'}`);
     if (state.mode === 'select') parts.push(`お題: ${PROMPT_LABEL[state.promptType]}`, `選択肢: ${state.choiceCount}枚`);
     if (state.mode === 'matching') parts.push(`組: ${state.pairCount}`);
+    if (state.mode === 'spell') {
+      parts.push(`ダミー: ${state.dummyCount}枚`, `文字数: ${state.lengthHint ? '見せる' : '見せない'}`);
+      if (state.minLength) parts.push(`語の長さ: ${state.minLength}文字以上`);
+    }
     parts.push(`出題順: ${state.shuffle ? 'ランダム' : '順番'}`);
     $('#detail-summary').textContent = parts.join(' ・ ');
   }
@@ -329,6 +339,19 @@
       $('#pair-count-slider').value = p.pairCount;
       $('#pair-count-value').textContent = p.pairCount;
     }
+    if (p.dummyCount) {
+      state.dummyCount = p.dummyCount;
+      $('#dummy-count-slider').value = p.dummyCount;
+      $('#dummy-count-value').textContent = p.dummyCount;
+    }
+    if (p.lengthHint !== undefined) {
+      const b = $(`[data-length-hint="${p.lengthHint ? 1 : 0}"]`);
+      if (b) b.click();
+    }
+    if (p.minLength !== undefined) {
+      const b = $(`[data-min-length="${p.minLength}"]`);
+      if (b) b.click();
+    }
     // 親密度: 配分プリセットを利用可能数でクランプしてから総数に合わせる
     const avail = getAvailableByFamiliarity();
     FAM_KEYS.forEach((fam) => {
@@ -350,8 +373,18 @@
         $('#prompt-type-row').hidden = state.mode !== 'select';
         $('#choice-count-row').hidden = state.mode !== 'select';
         $('#pair-count-row').hidden = state.mode !== 'matching';
-        updateDetailSummary();
+        $('#dummy-count-row').hidden = state.mode !== 'spell';
+        $('#length-hint-row').hidden = state.mode !== 'spell';
+        $('#min-length-row').hidden = state.mode !== 'spell';
+        // ならべるは出題できる語が変わる (情景を除外・語の長さ) ので利用可能数を更新
+        updateSummary();
       });
+    });
+
+    $('#dummy-count-slider').addEventListener('input', (e) => {
+      state.dummyCount = parseInt(e.target.value, 10);
+      $('#dummy-count-value').textContent = state.dummyCount;
+      updateDetailSummary();
     });
 
     // 汎用: data-* 属性のボタン群を排他選択にして state に反映する
@@ -366,6 +399,8 @@
       });
     };
     bindOptionGroup('data-prompt-type', (v) => { state.promptType = v; });
+    bindOptionGroup('data-length-hint', (v) => { state.lengthHint = v === '1'; });
+    bindOptionGroup('data-min-length', (v) => { state.minLength = parseInt(v, 10) || 0; updateSummary(); });
 
     // 制限時間: 0〜30秒のスライダー (0 = なし)
     $('#time-limit-slider').addEventListener('input', (e) => {
@@ -397,11 +432,22 @@
     });
   }
 
+  // そのカードを今の設定で出題できるか。
+  // ならべるは文 (情景) を除外し、「語の長さ」の下限も適用する
+  function cardAllowed(c) {
+    if (!state.selectedCategories.has(c.category)) return false;
+    if (state.mode === 'spell') {
+      if (c.type === 'scene') return false;
+      if (state.minLength && getCharUnits(c.reading).length < state.minLength) return false;
+    }
+    return true;
+  }
+
   // 選択中カテゴリ内で親密度別に利用可能なカード数を返す
   function getAvailableByFamiliarity() {
     const result = { high: 0, mid: 0, low: 0 };
     for (const c of state.cards) {
-      if (!state.selectedCategories.has(c.category)) continue;
+      if (!cardAllowed(c)) continue;
       if (result[c.familiarity] !== undefined) result[c.familiarity]++;
     }
     return result;
@@ -411,7 +457,7 @@
   function getCandidatesByFamiliarity() {
     const result = { high: [], mid: [], low: [] };
     for (const c of state.cards) {
-      if (!state.selectedCategories.has(c.category)) continue;
+      if (!cardAllowed(c)) continue;
       if (result[c.familiarity]) result[c.familiarity].push(c);
     }
     return result;
@@ -574,6 +620,7 @@
   function renderCurrentCard() {
     const isSelect = state.mode === 'select';
     const isMatch = state.mode === 'matching';
+    const isSpell = state.mode === 'spell';
 
     // 線つなぎは1画面に複数語出すため「4〜6」のように語の範囲で表示する
     if (isMatch) {
@@ -583,22 +630,23 @@
     } else {
       $('#progress-current').textContent = state.index + 1;
     }
-    $('#card-frame').hidden = isSelect || isMatch;
+    $('#card-frame').hidden = isSelect || isMatch || isSpell;
     $('#select-area').hidden = !isSelect;
     $('#match-area').hidden = !isMatch;
+    $('#spell-area').hidden = !isSpell;
     $('#answer-area').hidden = true;
     $('#answer-label').textContent = '';
     $('#answer-label').classList.remove('is-hint');
     // 情景カード (type: scene) は正解が一つでないため、ヒント(モーラ○)は出さず
     // 「答えを見る」で模範文を表示する
     const isScene = !isMatch && state.queue[state.index] && state.queue[state.index].type === 'scene';
-    $('#btn-hint').hidden = isSelect || isMatch || isScene;
+    $('#btn-hint').hidden = isSelect || isMatch || isSpell || isScene;
     $('#btn-show-answer').hidden = isSelect || isMatch;
     $('#btn-show-answer').textContent = isScene ? '模範文を見る' : '答えを見る';
-    // 選択・線つなぎでは「次へ」を最初からグレー表示しておく。
+    // 選択・線つなぎ・ならべるでは「次へ」を最初からグレー表示しておく。
     // 後から出現させるとフッターの高さが変わり、線つなぎの線がずれるため
     const btnNext = $('#btn-next');
-    if (isSelect || isMatch) {
+    if (isSelect || isMatch || isSpell) {
       const lastIndex = (isMatch ? state.matchChunks.length : state.queue.length) - 1;
       btnNext.textContent = state.index === lastIndex ? '終了' : '次へ';
       btnNext.hidden = false;
@@ -618,6 +666,8 @@
       renderMatchQuestion(state.matchChunks[state.index]);
     } else if (isSelect) {
       renderChoiceQuestion(state.queue[state.index]);
+    } else if (isSpell) {
+      renderSpellQuestion(state.queue[state.index]);
     } else {
       const card = state.queue[state.index];
       const img = $('#card-image');
@@ -738,6 +788,187 @@
     grid.style.setProperty('--card-size', `${size}px`);
   }
   window.addEventListener('resize', sizeChoiceCards);
+
+  // ---- ならべるモード (文字チップ) ----
+  // 絵を見て、かなチップ (正解の文字 + 似た音のダミー) を順にタップして ことばを作る。
+  // 音韻性錯語 (ライオン→カイオン 等) の患者向け。判定は「文字数あり」なら
+  // 空欄が埋まった時点で自動、「なし」なら「できた」ボタンで行う
+  const KANA_ROWS = [
+    'あいうえお', 'かきくけこ', 'がぎぐげご', 'さしすせそ', 'ざじずぜぞ', 'たちつてと', 'だぢづでど',
+    'なにぬねの', 'はひふへほ', 'ばびぶべぼ', 'ぱぴぷぺぽ', 'まみむめも', 'やゆよ', 'らりるれろ', 'わをん',
+  ];
+  const VOICING_GROUPS = [
+    ['かきくけこ', 'がぎぐげご'], ['さしすせそ', 'ざじずぜぞ'],
+    ['たちつてと', 'だぢづでど'], ['はひふへほ', 'ばびぶべぼ', 'ぱぴぷぺぽ'],
+  ];
+
+  // 1ユニット (例: 'た', 'きゃ') に対して、間違えやすい似た音の候補を返す
+  function similarUnits(unit) {
+    const base = unit[0];
+    const small = unit.slice(1);
+    const out = new Set();
+    // 清音・濁音・半濁音の入れ替え (か⇔が、は⇔ば⇔ぱ)
+    for (const group of VOICING_GROUPS) {
+      const gi = group.findIndex((row) => row.includes(base));
+      if (gi < 0) continue;
+      const pos = group[gi].indexOf(base);
+      group.forEach((row, j) => { if (j !== gi) out.add(row[pos] + small); });
+    }
+    // 同じ行の別の音 (た→ち/つ/て/と)
+    const row = KANA_ROWS.find((r) => r.includes(base));
+    if (row) for (const ch of row) if (ch !== base) out.add(ch + small);
+    // 拗音は小書き文字の入れ替え (きゃ→きゅ/きょ)
+    if (small) for (const s of 'ゃゅょ') if (s !== small) out.add(base + s);
+    out.delete(unit);
+    return Array.from(out);
+  }
+
+  function buildDummies(targetUnits, count) {
+    const targetSet = new Set(targetUnits);
+    const pool = shuffleArray(targetUnits.flatMap(similarUnits)).filter((u) => !targetSet.has(u));
+    const picked = [];
+    for (const u of pool) {
+      if (picked.length >= count) break;
+      if (!picked.includes(u)) picked.push(u);
+    }
+    // 似た音が足りなければ (「ー」だけの語など) 任意のかなで補充
+    const any = shuffleArray(KANA_ROWS.join('').split(''));
+    for (const ch of any) {
+      if (picked.length >= count) break;
+      if (!targetSet.has(ch) && !picked.includes(ch)) picked.push(ch);
+    }
+    return picked;
+  }
+
+  const spellState = { target: [], answer: [], chips: [], done: false, tried: false };
+
+  function spellDisplay(unit) {
+    return state.script === 'katakana' ? toKatakana(unit) : unit;
+  }
+
+  function renderSpellQuestion(card) {
+    const img = $('#spell-image');
+    img.src = `images/${card.category}/${card.id}.png`;
+    img.alt = '';
+
+    spellState.target = getCharUnits(card.reading);
+    spellState.answer = [];
+    spellState.chips = [];
+    spellState.done = false;
+    spellState.tried = false;
+
+    const chipsEl = $('#spell-chips');
+    chipsEl.innerHTML = '';
+    chipsEl.classList.remove('is-locked');
+    const units = shuffleArray([...spellState.target, ...buildDummies(spellState.target, state.dummyCount)]);
+    units.forEach((unit) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'spell-chip';
+      btn.textContent = spellDisplay(unit);
+      const chip = { unit, el: btn, used: false };
+      btn.addEventListener('click', () => {
+        if (spellState.done || chip.used) return;
+        chip.used = true;
+        btn.classList.add('is-used');
+        spellState.answer.push(chip);
+        renderSpellSlots();
+        // 文字数あり: 埋まったら自動判定
+        if (state.lengthHint && spellState.answer.length === spellState.target.length) checkSpell();
+      });
+      spellState.chips.push(chip);
+      chipsEl.appendChild(btn);
+    });
+
+    $('#btn-spell-check').hidden = state.lengthHint;
+    $('#btn-spell-undo').disabled = false;
+    $('#btn-spell-check').disabled = false;
+    renderSpellSlots();
+  }
+
+  function renderSpellSlots(status) {
+    const slotsEl = $('#spell-slots');
+    slotsEl.innerHTML = '';
+    slotsEl.classList.remove('is-correct', 'is-wrong', 'is-revealed');
+    if (status) slotsEl.classList.add(status);
+    const n = state.lengthHint ? spellState.target.length : spellState.answer.length;
+    for (let i = 0; i < n; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'spell-slot';
+      const chip = spellState.answer[i];
+      if (chip) {
+        slot.textContent = spellDisplay(chip.unit);
+        slot.classList.add('is-filled');
+      }
+      slotsEl.appendChild(slot);
+    }
+  }
+
+  function undoSpell() {
+    if (spellState.done) return;
+    const chip = spellState.answer.pop();
+    if (!chip) return;
+    chip.used = false;
+    chip.el.classList.remove('is-used');
+    renderSpellSlots();
+  }
+
+  function checkSpell() {
+    if (spellState.done || spellState.answer.length === 0) return;
+    const card = state.queue[state.index];
+    const answer = spellState.answer.map((c) => c.unit);
+    const correct = answer.length === spellState.target.length &&
+      answer.every((u, i) => u === spellState.target[i]);
+    if (state.session.firstTry[state.index] === undefined) {
+      state.session.firstTry[state.index] = correct;
+    }
+    if (correct) {
+      finishSpell('is-correct');
+      speak(card);
+    } else {
+      // 不正解: 赤く点滅させてから並べ直せるようにする
+      state.session.wrongTaps++;
+      state.session.missed.add(card.id);
+      spellState.tried = true;
+      renderSpellSlots('is-wrong');
+      setTimeout(() => {
+        if (spellState.done) return;
+        spellState.answer.forEach((c) => { c.used = false; c.el.classList.remove('is-used'); });
+        spellState.answer = [];
+        renderSpellSlots();
+      }, 600);
+    }
+  }
+
+  // 「答えを見る」: 正解の並びを表示して次へ進めるようにする (一発正解にはならない)
+  function revealSpell() {
+    if (spellState.done) return;
+    const card = state.queue[state.index];
+    if (state.session.firstTry[state.index] === undefined) state.session.firstTry[state.index] = false;
+    state.session.missed.add(card.id);
+    spellState.chips.forEach((c) => { c.used = false; c.el.classList.remove('is-used'); });
+    // 同じ文字が2回出る語 (例: ままごと) でも別々のチップを使う
+    spellState.answer = spellState.target.map((unit) => {
+      const chip = spellState.chips.find((c) => c.unit === unit && !c.used);
+      if (!chip) return { unit };
+      chip.used = true;
+      chip.el.classList.add('is-used');
+      return chip;
+    });
+    finishSpell('is-revealed');
+    speak(card);
+  }
+
+  function finishSpell(status) {
+    spellState.done = true;
+    state.answerShown = true;
+    renderSpellSlots(status);
+    $('#spell-chips').classList.add('is-locked');
+    $('#btn-spell-undo').disabled = true;
+    $('#btn-spell-check').disabled = true;
+    $('#btn-show-answer').hidden = true;
+    $('#btn-next').disabled = false;
+  }
 
   // ---- 線つなぎモード ----
   // ことば(左列)と絵カード(右列)を指でなぞって線でつなぐ。
@@ -1111,7 +1342,7 @@
       if (state.mode === 'naming') {
         if (s.judgments[i] !== true && s.judgments[i] !== false) return;
         ok = s.judgments[i] === true;
-      } else if (state.mode === 'select') {
+      } else if (state.mode === 'select' || state.mode === 'spell') {
         if (s.firstTry[i] === undefined) return;
         ok = s.firstTry[i] === true;
       } else {
@@ -1381,7 +1612,11 @@
     });
 
     $('#btn-hint').addEventListener('click', showHint);
-    $('#btn-show-answer').addEventListener('click', showAnswer);
+    $('#btn-show-answer').addEventListener('click', () => {
+      if (state.mode === 'spell') revealSpell(); else showAnswer();
+    });
+    $('#btn-spell-undo').addEventListener('click', undoSpell);
+    $('#btn-spell-check').addEventListener('click', checkSpell);
     $('#btn-replay').addEventListener('click', () => {
       const card = state.queue[state.index];
       if (card) speak(card);
