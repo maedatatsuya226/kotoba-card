@@ -351,3 +351,21 @@ node scripts/generate-audio.mjs
 ```
 
 **チェック観点**: 対の2枚を並べて「〜しているのは誰?」と聞いたとき、文を知らない人でも迷わず指させるか。迷う絵は手がかりを強めて再生成。
+
+### 11.3 関係節の整理(第3弾: 新規8枚 + 作り直し2枚)
+
+関係節の対は **前半の出来事(誰が誰に)が2枚とも同じ** で、後半の状態にある人物だけが違うこと(前半まで入れ替わると語順レベルと区別がつかない)。もう一方の人物は中立の表情にする(笑う/泣くの組で両方が笑っていると成立しない)。
+
+```
+(1) このリポジトリの data/pending/scene-relative2.json を読み込んで、cards 配列のすべてのエントリの情景絵を gpt-image-2 で生成してください。共通テンプレートは同じファイルの prompt_template、{english_prompt} に各エントリの english_prompt を差し込みます。保存先は images/scene/[id].png。pairs の2枚は同じ人物・同じ出来事で、指定された人物だけが指定の状態(ぬれている/転んだ/笑っている)になるようにし、もう一方は中立の表情にしてください。
+
+(2) 次の2枚は文を変えたので、既存ファイルを上書きで再生成してください(テンプレートは同じ)。
+- images/scene/scene_girl_helped_boy_praised.png
+  english_prompt: "a smiling teacher patting a girl on the head, the girl standing proudly and holding a stack of books that were picked up for her, while a boy stands beside them with a calm neutral face, the teacher clearly facing the girl"
+- images/scene/scene_mother_waving_boy_on_train.png
+  english_prompt: "a boy standing on a station platform waving his hand toward a train, and his mother seen through the window of the train car looking at him with a calm face and her hands in her lap, the train door closed, side view"
+
+1枚生成するたびに「[N/M] 完了: id」とログ出力し、すべて完了したら件数を報告してください。明示的に gpt-image-2 を指定して生成してください。
+```
+
+生成後: `node scripts/optimize-images.mjs images/scene` → `node scripts/merge-pending.mjs`。
