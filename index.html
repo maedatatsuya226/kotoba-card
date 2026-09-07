@@ -125,6 +125,16 @@
           </div>
         </section>
 
+        <!-- 選ぶ課題だけ: 間違えた時の音声 (ST がよく切り替えるので基本側に置く) -->
+        <section id="wrong-audio-section" class="setup-section" hidden>
+          <h3 class="setup-section-title">間違えた時の音声</h3>
+          <div class="option-btns">
+            <button class="btn btn-mini is-selected" type="button" data-wrong-audio="prompt">お題をもう一度</button>
+            <button class="btn btn-mini" type="button" data-wrong-audio="chosen">選んだ絵のことば <span class="hint">(訂正)</span></button>
+            <button class="btn btn-mini" type="button" data-wrong-audio="none">なし</button>
+          </div>
+        </section>
+
         <!-- 詳細: 折りたたみ。閉じていても現在値を1行で表示する -->
         <section id="setup-detail" class="setup-section setup-detail">
           <button id="detail-toggle" class="detail-toggle" type="button" aria-expanded="false" aria-controls="detail-body">
@@ -208,14 +218,6 @@
                   <button class="btn btn-mini is-selected" type="button" data-prompt-type="text">文字</button>
                   <button class="btn btn-mini" type="button" data-prompt-type="audio">音声のみ <span class="hint">(聴理解)</span></button>
                   <button class="btn btn-mini" type="button" data-prompt-type="both">文字＋音声</button>
-                </div>
-              </div>
-              <div id="wrong-audio-row" class="option-row" hidden>
-                <span class="option-row-label">間違えた時の音声</span>
-                <div class="option-btns">
-                  <button class="btn btn-mini is-selected" type="button" data-wrong-audio="prompt">お題をもう一度</button>
-                  <button class="btn btn-mini" type="button" data-wrong-audio="chosen">選んだ絵のことば <span class="hint">(訂正)</span></button>
-                  <button class="btn btn-mini" type="button" data-wrong-audio="none">なし</button>
                 </div>
               </div>
               <div id="correct-audio-row" class="option-row" hidden>

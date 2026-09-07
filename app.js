@@ -50,7 +50,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v35';
+  const APP_VERSION = 'v36';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -298,9 +298,8 @@
     ];
     if (state.mode === 'naming') parts.push(`制限時間: ${state.timeLimit ? `${state.timeLimit}秒` : 'なし'}`);
     if (state.mode === 'select') {
-      const WRONG_LABEL = { prompt: 'お題をもう一度', chosen: '選んだ絵のことば', none: 'なし' };
       parts.push(`お題: ${PROMPT_LABEL[state.promptType]}`, `選択肢: ${state.choiceCount}枚`,
-        `間違えた時: ${WRONG_LABEL[state.wrongAudio]}`, `正解の音声: ${state.correctAudio ? '流す' : '流さない'}`);
+        `正解の音声: ${state.correctAudio ? '流す' : '流さない'}`);
     }
     if (state.mode === 'matching') parts.push(`組: ${state.pairCount}`);
     if (state.mode === 'spell') {
@@ -403,7 +402,7 @@
         });
         $('#time-limit-row').hidden = state.mode !== 'naming';
         $('#prompt-type-row').hidden = state.mode !== 'select';
-        $('#wrong-audio-row').hidden = state.mode !== 'select';
+        $('#wrong-audio-section').hidden = state.mode !== 'select';
         $('#correct-audio-row').hidden = state.mode !== 'select';
         $('#choice-count-row').hidden = state.mode !== 'select';
         $('#pair-count-row').hidden = state.mode !== 'matching';
