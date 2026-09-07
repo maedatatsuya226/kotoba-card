@@ -17,6 +17,8 @@
     script: 'default',
     // 選択モードのお題の出し方: 'text' | 'audio'(聴理解) | 'both'
     promptType: 'text',
+    // 選択モード: 正解をタップした時にお題を読み上げるか (文の課題では切りたいことがある)
+    correctAudio: true,
     // 呼称モードの制限時間 (秒)。0 = なし
     timeLimit: 0,
     // ならべるモード: ダミー文字の数 / 文字数(空欄)を見せるか / 出題する語の最小文字数 (0 = すべて)
@@ -46,7 +48,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v33';
+  const APP_VERSION = 'v34';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -293,7 +295,10 @@
       `文字: ${SCRIPT_LABEL[state.script]}`,
     ];
     if (state.mode === 'naming') parts.push(`制限時間: ${state.timeLimit ? `${state.timeLimit}秒` : 'なし'}`);
-    if (state.mode === 'select') parts.push(`お題: ${PROMPT_LABEL[state.promptType]}`, `選択肢: ${state.choiceCount}枚`);
+    if (state.mode === 'select') {
+      parts.push(`お題: ${PROMPT_LABEL[state.promptType]}`, `選択肢: ${state.choiceCount}枚`,
+        `正解の音声: ${state.correctAudio ? '流す' : '流さない'}`);
+    }
     if (state.mode === 'matching') parts.push(`組: ${state.pairCount}`);
     if (state.mode === 'spell') {
       parts.push(`ダミー: ${state.dummyCount}枚`, `文字数: ${state.lengthHint ? '見せる' : '見せない'}`);
@@ -391,6 +396,7 @@
         });
         $('#time-limit-row').hidden = state.mode !== 'naming';
         $('#prompt-type-row').hidden = state.mode !== 'select';
+        $('#correct-audio-row').hidden = state.mode !== 'select';
         $('#choice-count-row').hidden = state.mode !== 'select';
         $('#pair-count-row').hidden = state.mode !== 'matching';
         $('#dummy-count-row').hidden = state.mode !== 'spell';
@@ -419,6 +425,7 @@
       });
     };
     bindOptionGroup('data-prompt-type', (v) => { state.promptType = v; });
+    bindOptionGroup('data-correct-audio', (v) => { state.correctAudio = v === '1'; });
     bindOptionGroup('data-length-hint', (v) => { state.lengthHint = v === '1'; });
     bindOptionGroup('data-min-length', (v) => { state.minLength = parseInt(v, 10) || 0; updateSummary(); });
     bindOptionGroup('data-sentence-level', (v) => { state.sentenceLevel = v; updateSummary(); });
@@ -788,12 +795,19 @@
           btn.classList.add('is-correct');
           grid.classList.add('is-answered');
           state.answerShown = true;
-          speak(target);
+          if (state.correctAudio) speak(target);
           $('#btn-next').disabled = false;
         } else {
           btn.classList.add('is-wrong');
           state.session.wrongTaps++;
           state.session.missed.add(target.id);
+          // お題を音声で出している時は、間違えたら少し間を置いてもう一度聞かせる
+          // (聴理解ではお題が画面に残っていないので、聞き直して選び直せるように)
+          if (state.promptType !== 'text') {
+            setTimeout(() => {
+              if (!state.answerShown && state.queue[state.index] === target) speak(target);
+            }, 500);
+          }
         }
       });
 
