@@ -8,20 +8,12 @@
 
 v32〜v33(短文理解のレベル分け・情景絵30枚)は **`next` ブランチ**にある。本番(Cloudflare Pages)は `main` だけを配信するので、`main` にプッシュするまでアプリには反映されない。**音声を揃えて確認するまで `main` にはマージしない。**
 
-### Mac でやること(音声生成)
+### Mac での音声生成 — 完了
 
-```sh
-git fetch origin
-git checkout next            # main ではなく next
-node scripts/generate-audio.mjs   # VOICEVOX 起動中に。未生成の 36 件だけ作られる
-git add audio
-git commit -m "Add audio for level-graded scene cards"
-git push origin next         # ← main に push しないこと
-```
-
-- 対象 36 件 = 受動文 6(既存の絵を流用)+ 新しい情景文 30。すべて `tts_text`(漢字文)で合成される
-- 文が長いので、試聴して区切り・アクセントが不自然な文は `TTS_PARAM_OVERRIDES` / `TTS_OVERRIDES` で調整して該当 wav を削除→再実行
-- 終わったら Windows 側で `next` を確認し、`main` にマージしてプッシュ(その時点で本番に配信)
+- VOICEVOX `No.7 アナウンス`で受動文6件＋新しい情景文30件の計36件を生成
+- 全212カードの音声が揃っており、WAV形式・欠損・破損の検査済み
+- 生成した36文は現状の音声を採用する
+- 次は Windows 側で `next` を確認し、`main` にマージしてプッシュする（その時点で本番に配信）
 
 ### Windows 側で最後にやること
 
@@ -55,7 +47,7 @@ FB原文は `~/Downloads/ことばカードFB第２弾.doc`(リポジトリ外)�
 - 選択モードは同じ絵を使うカードを選択肢に並べない(受動/能動で答えが2つにならないように)
 - **残作業**:
   - [ ] Codex で `data/pending/scene-levels.json` の30枚を生成(ガイド §11.1)。意味12・語順8・使役4・関係節6
-  - [ ] `node scripts/optimize-images.mjs images/scene` → `node scripts/merge-pending.mjs` → Mac で `node scripts/generate-audio.mjs`(受動文6件 + 新30件)
+  - [x] `node scripts/optimize-images.mjs images/scene` → `node scripts/merge-pending.mjs` → Mac で `node scripts/generate-audio.mjs`(受動文6件 + 新30件)
   - [ ] バージョンを上げてプッシュ。iPad で「文のレベル」ごとに確認
   - [ ] 関係節の絵は「誰が転んだか」が一目で分かるか特に確認。分かりにくければプロンプトを直して再生成
 
