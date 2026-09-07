@@ -23,6 +23,8 @@
     dummyCount: 2,
     lengthHint: true,
     minLength: 0,
+    // 情景カードの文のレベル: 'all' | 'simple' | 'semantic' | 'reversible' | 'particle' | 'relative'
+    sentenceLevel: 'all',
     // セッション内の記録 (終了画面の正答率用。保存はしない)
     session: {
       judgments: [],   // 呼称: index → true(○) / false(×) / undefined(未評価)
@@ -44,7 +46,7 @@
   };
 
   // sw.js の CACHE_NAME と合わせて更新する (スタート画面に表示、更新確認用)
-  const APP_VERSION = 'v31';
+  const APP_VERSION = 'v32';
 
   const FAM_KEYS = ['high', 'mid', 'low'];
   const FAM_LABEL = { high: 'やさしい', mid: 'ふつう', low: 'むずかしい' };
@@ -61,15 +63,16 @@
   const TASK_PRESETS = {
     'noun-naming':       { title: '名詞呼称',           mode: 'naming',   categories: 'core',        total: 10, fam: 'balanced' },
     'verb-naming':       { title: '動作呼称',           mode: 'naming',   categories: ['action'],    total: 10, fam: 'balanced' },
-    'scene-description': { title: '情景説明',           mode: 'naming',   categories: ['scene'],     total: 8,  fam: 'balanced' },
+    'scene-description': { title: '情景説明',           mode: 'naming',   categories: ['scene'],     total: 8,  fam: 'balanced', sentenceLevel: 'all' },
     'read-select':       { title: '文字を見て絵を選ぶ', mode: 'select',   categories: 'core+action', total: 10, fam: 'balanced', promptType: 'text',  choiceCount: 3 },
     'listen-select':     { title: '単語を聞いて絵を選ぶ', mode: 'select', categories: 'core+action', total: 10, fam: 'balanced', promptType: 'audio', choiceCount: 3 },
-    'sentence-select':   { title: '文を聞いて情景絵を選ぶ', mode: 'select', categories: ['scene'],   total: 8,  fam: 'balanced', promptType: 'audio', choiceCount: 2 },
+    'sentence-select':   { title: '文を聞いて情景絵を選ぶ', mode: 'select', categories: ['scene'],   total: 8,  fam: 'balanced', promptType: 'audio', choiceCount: 2, sentenceLevel: 'all' },
     'matching-basic':    { title: '文字と絵を線でつなぐ', mode: 'matching', categories: 'core+action', total: 9, fam: 'balanced', pairCount: 3 },
     'kana-spell':        { title: '文字チップ (文字数あり)', mode: 'spell', categories: 'core', total: 10, fam: 'balanced', dummyCount: 2, lengthHint: true,  minLength: 0 },
     'kana-spell-free':   { title: '文字チップ (文字数なし)', mode: 'spell', categories: 'core', total: 10, fam: 'balanced', dummyCount: 2, lengthHint: false, minLength: 0 },
   };
   const MODE_LABEL = { naming: '話す', select: '選ぶ', matching: 'つなぐ', spell: 'ならべる' };
+  const LEVEL_LABEL = { all: 'すべて', simple: '単文', semantic: '意味', reversible: '語順', particle: '助詞', relative: '関係節' };
   const ERROR_TYPE_LABEL = {
     anomia: '喚語困難', neologism: '新造語', semantic: '語性錯語',
     phonemic: '音韻性錯語', perseveration: '保続',
@@ -96,6 +99,16 @@
       case 'kanji':    return card.kanji_label || card.japanese_label;
       default:         return card.japanese_label;
     }
+  }
+
+  // カードの絵。受動文などは能動文の絵を流用するので image で上書きできる
+  function imageUrl(card) {
+    return `images/${card.category}/${card.image || card.id}.png`;
+  }
+
+  // 対の絵 (選択肢に必ず混ぜるカードid)。旧 pair (単数) も受け付ける
+  function pairIds(card) {
+    return card.pairs || (card.pair ? [card.pair] : []);
   }
 
   // ---- Screen routing ----
@@ -286,6 +299,9 @@
       parts.push(`ダミー: ${state.dummyCount}枚`, `文字数: ${state.lengthHint ? '見せる' : '見せない'}`);
       if (state.minLength) parts.push(`語の長さ: ${state.minLength}文字以上`);
     }
+    if (state.selectedCategories.has('scene') && state.mode !== 'spell') {
+      parts.push(`文のレベル: ${LEVEL_LABEL[state.sentenceLevel]}`);
+    }
     parts.push(`出題順: ${state.shuffle ? 'ランダム' : '順番'}`);
     $('#detail-summary').textContent = parts.join(' ・ ');
   }
@@ -352,6 +368,10 @@
       const b = $(`[data-min-length="${p.minLength}"]`);
       if (b) b.click();
     }
+    if (p.sentenceLevel) {
+      const b = $(`[data-sentence-level="${p.sentenceLevel}"]`);
+      if (b) b.click();
+    }
     // 親密度: 配分プリセットを利用可能数でクランプしてから総数に合わせる
     const avail = getAvailableByFamiliarity();
     FAM_KEYS.forEach((fam) => {
@@ -401,6 +421,7 @@
     bindOptionGroup('data-prompt-type', (v) => { state.promptType = v; });
     bindOptionGroup('data-length-hint', (v) => { state.lengthHint = v === '1'; });
     bindOptionGroup('data-min-length', (v) => { state.minLength = parseInt(v, 10) || 0; updateSummary(); });
+    bindOptionGroup('data-sentence-level', (v) => { state.sentenceLevel = v; updateSummary(); });
 
     // 制限時間: 0〜30秒のスライダー (0 = なし)
     $('#time-limit-slider').addEventListener('input', (e) => {
@@ -440,6 +461,8 @@
       if (c.type === 'scene') return false;
       if (state.minLength && getCharUnits(c.reading).length < state.minLength) return false;
     }
+    // 情景カードは文のレベルで絞り込める
+    if (c.type === 'scene' && state.sentenceLevel !== 'all' && c.level !== state.sentenceLevel) return false;
     return true;
   }
 
@@ -490,6 +513,9 @@
     totalSlider.disabled = totalAvail === 0;
     $('#count-total-slider-value').textContent = total;
     $('#count-total-max').textContent = totalAvail;
+
+    // 文のレベルは情景カードを選んでいる時だけ意味を持つ
+    $('#sentence-level-row').hidden = !state.selectedCategories.has('scene') || state.mode === 'spell';
 
     const startBtn = $('#btn-start');
     const warning = $('#setup-warning');
@@ -597,15 +623,19 @@
     // 音声で出題する場合は読みが同じカードも同様に除外する
     const targetLabel = displayLabel(target);
     const useAudio = state.promptType !== 'text';
+    // 同じ絵を使うカード (受動文と能動文など) は答えが2つになるので除外する
     const confusable = (c) =>
-      displayLabel(c) === targetLabel || (useAudio && c.reading === target.reading);
+      displayLabel(c) === targetLabel || (useAudio && c.reading === target.reading) ||
+      imageUrl(c) === imageUrl(target);
     const inScope = state.cards.filter(
       (c) => c.id !== target.id && !confusable(c) && state.selectedCategories.has(c.category)
     );
-    // 情景カードに対の絵 (主語と目的語を入れ替えたもの) があれば必ず選択肢に含める
+    // 情景カードに対の絵 (主語と目的語を入れ替えたもの等) があれば必ず選択肢に含める
     // (「猫が犬を追いかける」に対して「犬が猫を追いかける」= 短文理解の本命ディストラクタ)
-    const pairCard = target.pair ? state.cards.find((c) => c.id === target.pair) : null;
-    const pinned = pairCard && wanted > 0 ? [pairCard] : [];
+    const pinned = pairIds(target)
+      .map((id) => state.cards.find((c) => c.id === id))
+      .filter((c) => c && !confusable(c))
+      .slice(0, wanted);
     let distractors = pinned.concat(
       shuffleArray(inScope.filter((c) => !pinned.includes(c))).slice(0, wanted - pinned.length)
     );
@@ -671,7 +701,7 @@
     } else {
       const card = state.queue[state.index];
       const img = $('#card-image');
-      img.src = `images/${card.category}/${card.id}.png`;
+      img.src = imageUrl(card);
       img.alt = card.japanese_label;
       startTimer();
     }
@@ -743,7 +773,7 @@
       btn.type = 'button';
       btn.className = 'choice-card';
       const img = document.createElement('img');
-      img.src = `images/${choice.category}/${choice.id}.png`;
+      img.src = imageUrl(choice);
       img.alt = '';
       btn.appendChild(img);
 
@@ -1007,7 +1037,7 @@
       el.type = 'button';
       el.className = 'match-pic';
       const img = document.createElement('img');
-      img.src = `images/${card.category}/${card.id}.png`;
+      img.src = imageUrl(card);
       img.alt = '';
       el.appendChild(img);
       picsEl.appendChild(el);
@@ -1249,7 +1279,7 @@
           ? state.matchChunks[state.index + i]
           : [next];
       for (const c of upcoming) {
-        const imgSrc = `images/${c.category}/${c.id}.png`;
+        const imgSrc = imageUrl(c);
         if (!preloadedSrcs.has(imgSrc)) {
           preloadedSrcs.add(imgSrc);
           const img = new Image();

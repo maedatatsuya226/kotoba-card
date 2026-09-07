@@ -21,7 +21,7 @@ async function exists(p) {
 // cards.json は1カード1行の手書き整形なので、JSON.stringify で丸ごと書き直さず
 // 末尾の `]` の手前に同じ形式の行を差し込む
 function cardLine(card) {
-  const order = ['id', 'pair', 'type', 'category', 'japanese_label', 'kanji_label', 'reading', 'tts_text', 'familiarity', 'english_prompt'];
+  const order = ['id', 'pair', 'pairs', 'level', 'image', 'type', 'category', 'japanese_label', 'kanji_label', 'reading', 'tts_text', 'familiarity', 'english_prompt'];
   const parts = order.filter((k) => card[k] !== undefined).map((k) => `"${k}": ${JSON.stringify(card[k])}`);
   return `  { ${parts.join(', ')} }`;
 }
@@ -42,7 +42,8 @@ async function main() {
     const pending = JSON.parse(await readFile(p, 'utf8'));
     const remain = [];
     for (const card of pending.cards) {
-      const img = path.join(ROOT, 'images', card.category, `${card.id}.png`);
+      // image を持つカードは既存の絵を流用する (受動文など)。その絵があれば取り込める
+      const img = path.join(ROOT, 'images', card.category, `${card.image ?? card.id}.png`);
       if (!(await exists(img))) { remain.push(card); waiting++; continue; }
       if (knownIds.has(card.id)) { console.log(`skip (already in cards.json): ${card.id}`); continue; }
       newLines.push(cardLine(card));

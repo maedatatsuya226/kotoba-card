@@ -181,6 +181,18 @@
                   <button class="btn btn-mini" type="button" data-min-length="4">4文字以上</button>
                 </div>
               </div>
+              <!-- 情景カードを選んでいる時だけ: 短文理解のレベル -->
+              <div id="sentence-level-row" class="option-row" hidden>
+                <span class="option-row-label">文のレベル <span class="hint">(情景カードのみ)</span></span>
+                <div class="option-btns">
+                  <button class="btn btn-mini is-selected" type="button" data-sentence-level="all">すべて</button>
+                  <button class="btn btn-mini" type="button" data-sentence-level="simple">単文</button>
+                  <button class="btn btn-mini" type="button" data-sentence-level="semantic">意味 <span class="hint">(非可逆)</span></button>
+                  <button class="btn btn-mini" type="button" data-sentence-level="reversible">語順 <span class="hint">(可逆)</span></button>
+                  <button class="btn btn-mini" type="button" data-sentence-level="particle">助詞 <span class="hint">(受動・使役)</span></button>
+                  <button class="btn btn-mini" type="button" data-sentence-level="relative">関係節</button>
+                </div>
+              </div>
               <div id="time-limit-row" class="choice-count-row">
                 <div class="choice-count-header">
                   <span class="choice-count-label">制限時間 <span class="hint">(時間切れで答えを表示)</span></span>
